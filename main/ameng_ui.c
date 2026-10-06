@@ -133,7 +133,13 @@ void ameng_ui_render(ameng_ui_t *ui, const ameng_state_t *state,
                           state->hunger, state->energy, state->bond,
                           ai_online ? "ON" : "OFF");
 
+    /* Reset pose first so transitions never inherit limbs/eyes from the
+     * previous behavior. */
     lv_obj_set_pos(ui->cat, 54, 138);
+    lv_obj_set_size(ui->cat_eye_l, 8, 5);
+    lv_obj_set_size(ui->cat_eye_r, 8, 5);
+    lv_obj_set_pos(ui->cat_paw_l, 38, 82);
+    lv_obj_set_pos(ui->cat_paw_r, 67, 82);
     lv_obj_clear_flag(ui->bird, LV_OBJ_FLAG_HIDDEN);
     switch (behavior) {
     case AMENG_BEHAVIOR_NAP:
@@ -156,10 +162,6 @@ void ameng_ui_render(ameng_ui_t *ui, const ameng_state_t *state,
         lv_obj_set_x(ui->cat, 86);
         break;
     default:
-        lv_obj_set_size(ui->cat_eye_l, 8, 5);
-        lv_obj_set_size(ui->cat_eye_r, 8, 5);
-        lv_obj_set_pos(ui->cat_paw_l, 38, 82);
-        lv_obj_set_pos(ui->cat_paw_r, 67, 82);
         break;
     }
 }

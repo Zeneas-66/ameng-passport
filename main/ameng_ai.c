@@ -23,7 +23,8 @@ static bool s_enabled;
 
 static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    (void)arg; (void)data;
+    (void)arg;
+    (void)data;
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
@@ -46,7 +47,7 @@ esp_err_t ameng_ai_init(void)
     if (CONFIG_AMENG_AI_API_KEY[0] == '\0' ||
         CONFIG_AMENG_WIFI_SSID[0] == '\0' ||
         CONFIG_AMENG_AI_ENDPOINT[0] == '\0') {
-        ESP_LOGW(TAG, "AI disabled: configure Wi-Fi and AI credentials in menuconfig");
+        ESP_LOGW(TAG, "AI disabled: configure Wi-Fi and API settings");
         s_enabled = false;
         return ESP_OK;
     }
@@ -74,8 +75,7 @@ esp_err_t ameng_ai_init(void)
     wifi_config_t wifi = {0};
     snprintf((char *)wifi.sta.ssid, sizeof(wifi.sta.ssid), "%s", CONFIG_AMENG_WIFI_SSID);
     snprintf((char *)wifi.sta.password, sizeof(wifi.sta.password), "%s", CONFIG_AMENG_WIFI_PASSWORD);
-    wifi.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-    wifi.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;
+    wifi.sta.threshold.authmode = WIFI_AUTH_OPEN;
 
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err == ESP_OK) err = esp_wifi_set_config(WIFI_IF_STA, &wifi);
@@ -116,33 +116,90 @@ static esp_err_t http_event(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-esp_err_t ameng_ai_generate(const ameng_state_t *state, uint64_t now_s,
-                            uint8_t local_hour, char *out, size_t out_size)
+static size_t utf8_seq_len(unsigned char c)
+{
+    if ((c & 0x80U) == 0) return 1;
+    if ((c & 0xE0U) == 0xC0U) return 2;
+    if ((c & 0xF0U) == 0xE0U) return 3;
+    if ((c & 0xF8U) == 0xF0U) return 4;
+    return 1;
+}
+
+static void copy_short_chinese(const char *src, char *out, size_t out_size)
+{
+    if (!src || !out || out_size == 0) return;
+    size_t w = 0;
+    size_t glyphs = 0;
+    const unsigned char *p = (const unsigned char *)src;
+
+    while (*p && glyphs < 18) {
+        size_t n = utf8_seq_len(*p);
+        bool valid = true;
+        for (size_t i = 1; i < n; ++i) {
+            if (p[i] == 0 || (p[i] & 0xC0U) != 0x80U) {
+                valid = false;
+                break;
+            }
+        }
+        if (!valid) {
+            p++;
+            continue;
+        }
+
+        if (n == 1 && (*p == '\n' || *p == '\r' || *p == '\t' ||
+                       *p == '"' || *p == '\'')) {
+            p += n;
+            continue;
+        }
+
+        if (w + n + 1 > out_size) break;
+        memcpy(out + w, p, n);
+        w += n;
+        p += n;
+        glyphs++;
+    }
+    out[w] = '\0';
+}
+
+esp_err_t ameng_ai_generate(const ameng_state_t *state,
+                            ameng_room_t player_room,
+                            uint64_t now_s,
+                            uint8_t local_hour,
+                            char *out,
+                            size_t out_size)
 {
 #if !CONFIG_AMENG_AI_ENABLE
-    (void)state; (void)now_s; (void)local_hour; (void)out; (void)out_size;
+    (void)state;
+    (void)player_room;
+    (void)now_s;
+    (void)local_hour;
+    (void)out;
+    (void)out_size;
     return ESP_ERR_NOT_SUPPORTED;
 #else
     if (!state || !out || out_size == 0) return ESP_ERR_INVALID_ARG;
     if (!ameng_ai_online()) return ESP_ERR_INVALID_STATE;
 
-    char facts[768];
-    if (ameng_state_ai_context(state, now_s, local_hour, facts, sizeof(facts)) < 0) {
+    char facts[896];
+    if (ameng_state_ai_context(state, player_room, now_s, local_hour,
+                               facts, sizeof(facts)) < 0) {
         return ESP_ERR_INVALID_SIZE;
     }
 
     cJSON *root = cJSON_CreateObject();
     cJSON *messages = cJSON_AddArrayToObject(root, "messages");
     cJSON_AddStringToObject(root, "model", CONFIG_AMENG_AI_MODEL);
-    cJSON_AddNumberToObject(root, "temperature", 0.8);
-    cJSON_AddNumberToObject(root, "max_tokens", 40);
+    cJSON_AddNumberToObject(root, "temperature", 0.85);
+    cJSON_AddNumberToObject(root, "max_tokens", 48);
 
     cJSON *system = cJSON_CreateObject();
     cJSON_AddStringToObject(system, "role", "system");
     cJSON_AddStringToObject(system, "content",
-        "You are Ameng, a large long-haired white-and-yellow cat: proud, quiet, food-loving, "
-        "aloof-looking but deeply affectionate. Reply as Ameng in one short ASCII-only sentence, "
-        "max 36 characters. Never invent memories. Never contradict AMENG_FACTS.");
+        "你是阿猛，一只体型很大、白色长毛、头顶两侧有淡黄色毛、尾巴偏黄、"
+        "左嘴边有黄色毛的猫。性格清高、寡言、贪吃、闷骚，熟悉以后很黏人。"
+        "只输出括号里面要表达的中文意思，不要输出喵、括号、引号。"
+        "最多18个汉字，尽量简短自然。绝对不能编造AMENG_FACTS之外的既往记忆，"
+        "也不能和当前饥饿、精力、心情、位置等事实矛盾。");
     cJSON_AddItemToArray(messages, system);
 
     cJSON *user = cJSON_CreateObject();
@@ -193,28 +250,9 @@ esp_err_t ameng_ai_generate(const ameng_state_t *state, uint64_t now_s,
         cJSON_Delete(parsed);
         return ESP_ERR_INVALID_RESPONSE;
     }
-    /* The built-in UI font intentionally stays tiny. Normalize cloud output
-     * to one short printable-ASCII line so unexpected Unicode/newlines never
-     * turn into missing-glyph boxes or overflow the speech bubble. */
-    size_t w = 0;
-    bool last_space = false;
-    const unsigned char *p = (const unsigned char *)content->valuestring;
-    while (*p && w + 1 < out_size) {
-        unsigned char ch = *p++;
-        if (ch == '\n' || ch == '\r' || ch == '\t') ch = ' ';
-        if (ch < 0x20 || ch > 0x7e) ch = '?';
-        if (ch == ' ') {
-            if (last_space) continue;
-            last_space = true;
-        } else {
-            last_space = false;
-        }
-        out[w++] = (char)ch;
-        if (w >= 60) break;
-    }
-    while (w > 0 && out[w - 1] == ' ') --w;
-    out[w] = '\0';
+
+    copy_short_chinese(content->valuestring, out, out_size);
     cJSON_Delete(parsed);
-    return w > 0 ? ESP_OK : ESP_ERR_INVALID_RESPONSE;
+    return out[0] ? ESP_OK : ESP_ERR_INVALID_RESPONSE;
 #endif
 }

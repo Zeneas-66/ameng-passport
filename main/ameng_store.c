@@ -1,10 +1,9 @@
 #include "ameng_store.h"
 #include "nvs.h"
 #include "nvs_flash.h"
-#include <string.h>
 
 #define AMENG_MAGIC 0x414D454EU
-#define AMENG_SCHEMA 1U
+#define AMENG_SCHEMA 2U
 
 typedef struct {
     uint32_t magic;
@@ -34,7 +33,8 @@ esp_err_t ameng_store_load(ameng_saved_t *out, bool *found)
 
     if (err == ESP_ERR_NVS_NOT_FOUND) return ESP_OK;
     if (err != ESP_OK) return err;
-    if (size != sizeof(blob) || blob.magic != AMENG_MAGIC || blob.schema != AMENG_SCHEMA) {
+    if (size != sizeof(blob) || blob.magic != AMENG_MAGIC ||
+        blob.schema != AMENG_SCHEMA) {
         return ESP_ERR_INVALID_VERSION;
     }
 

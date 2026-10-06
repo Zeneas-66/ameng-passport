@@ -1,3 +1,5 @@
+<p align="right"><a href="V2_ACCEPTANCE.md">English</a> · <strong>简体中文</strong></p>
+
 # 阿猛 V2 逐项验收表
 
 本文用于把本轮需求与实际实现逐条对应，避免“写了但漏验”。

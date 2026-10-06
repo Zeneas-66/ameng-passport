@@ -1,3 +1,5 @@
+<p align="right"><strong>English</strong> · <a href="V2_ACCEPTANCE.zh_CN.md">简体中文</a></p>
+
 # Ameng V2 Acceptance Checklist
 
 This file mirrors the Chinese V2 acceptance checklist and records implementation status without claiming unverified factory compatibility.
@@ -11,10 +13,10 @@ This file mirrors the Chinese V2 acceptance checklist and records implementation
 
 ## Pet interaction
 
-- [x] Fixed Chinese menu: 阿猛 / 喂食 / 抚摸 / 游戏 / 对话.
+- [x] Fixed five-item Chinese pet menu matching the agreed call / feed / pet / game / dialogue semantics.
 - [x] 阿猛 is a call action available from every room.
-- [x] Calling always produces a response; arrival is state-dependent.
-- [x] 对话 requires Ameng to be in the current room; otherwise the UI says 请先到阿猛身边.
+- [x] Calling always produces a vocal/text response; arrival is state-dependent.
+- [x] Dialogue requires Ameng to be in the current room; otherwise the UI shows the agreed Chinese prompt asking the player to go to Ameng first.
 - [x] Replies use varying meow patterns plus a Chinese parenthesized meaning.
 - [x] Cat-vocal audio accompanies replies.
 

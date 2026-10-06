@@ -29,6 +29,10 @@ run_static_checks() {
         -o "${test_dir}/test_ameng_pet"
     "${test_dir}/test_ameng_pet"
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_ameng_dialogue.c main/ameng_pet.c main/ameng_dialogue.c \
+        -o "${test_dir}/test_ameng_dialogue"
+    "${test_dir}/test_ameng_dialogue"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
         tests/test_ui_pixel_math.c main/ui_pixel_math.c \
         -o "${test_dir}/test_ui_pixel_math"
     "${test_dir}/test_ui_pixel_math"

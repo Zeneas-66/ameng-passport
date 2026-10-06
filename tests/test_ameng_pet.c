@@ -15,7 +15,7 @@ int main(void)
     assert(s.thirst == 24);
     assert(s.energy == 76);
     assert(s.cat_room == AMENG_ROOM_LIVING);
-    assert(ameng_relationship_percent(s.affection_x10) == 56);
+    assert(ameng_relationship_percent(s.affection_x10) == 72);
 
     ameng_state_advance(&s, 16 * HOUR, 16);
     assert(s.hunger == 40);

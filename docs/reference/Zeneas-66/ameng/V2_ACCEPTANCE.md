@@ -14,7 +14,7 @@ This file mirrors the Chinese V2 acceptance checklist and records implementation
 ## Pet interaction
 
 - [x] Fixed five-item Chinese pet menu matching the agreed call / feed / pet / game / dialogue semantics.
-- [x] 阿猛 is a call action available from every room.
+- [x] The Ameng-name menu action is a call available from every room.
 - [x] Calling always produces a vocal/text response; arrival is state-dependent.
 - [x] Dialogue requires Ameng to be in the current room; otherwise the UI shows the agreed Chinese prompt asking the player to go to Ameng first.
 - [x] Replies use varying meow patterns plus a Chinese parenthesized meaning.

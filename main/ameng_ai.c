@@ -13,16 +13,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const char *TAG __attribute__((unused)) = "ameng_ai";
+#define WIFI_CONNECTED_BIT BIT0
+#define AI_RESPONSE_MAX 2048
+
+static EventGroupHandle_t s_wifi_events;
 static bool s_initialized;
 static bool s_enabled;
 
-#if CONFIG_AMENG_AI_ENABLE
-static const char *TAG = "ameng_ai";
-#define WIFI_CONNECTED_BIT BIT0
-#define AI_RESPONSE_MAX 2048
-static EventGroupHandle_t s_wifi_events;
-
-static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
+static void __attribute__((unused)) wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     (void)arg;
     (void)data;
@@ -92,12 +91,8 @@ bool ameng_ai_enabled(void)
 
 bool ameng_ai_online(void)
 {
-#if !CONFIG_AMENG_AI_ENABLE
-    return false;
-#else
     if (!s_enabled || !s_wifi_events) return false;
     return (xEventGroupGetBits(s_wifi_events) & WIFI_CONNECTED_BIT) != 0;
-#endif
 }
 
 typedef struct {
@@ -106,7 +101,7 @@ typedef struct {
     size_t used;
 } response_buf_t;
 
-static esp_err_t http_event(esp_http_client_event_t *evt)
+static esp_err_t __attribute__((unused)) http_event(esp_http_client_event_t *evt)
 {
     response_buf_t *r = evt->user_data;
     if (evt->event_id == HTTP_EVENT_ON_DATA && r && evt->data_len > 0) {
@@ -121,7 +116,7 @@ static esp_err_t http_event(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-static size_t utf8_seq_len(unsigned char c)
+static size_t __attribute__((unused)) utf8_seq_len(unsigned char c)
 {
     if ((c & 0x80U) == 0) return 1;
     if ((c & 0xE0U) == 0xC0U) return 2;
@@ -130,7 +125,7 @@ static size_t utf8_seq_len(unsigned char c)
     return 1;
 }
 
-static void copy_short_chinese(const char *src, char *out, size_t out_size)
+static void __attribute__((unused)) copy_short_chinese(const char *src, char *out, size_t out_size)
 {
     if (!src || !out || out_size == 0) return;
     size_t w = 0;
@@ -165,7 +160,6 @@ static void copy_short_chinese(const char *src, char *out, size_t out_size)
     }
     out[w] = '\0';
 }
-#endif /* CONFIG_AMENG_AI_ENABLE */
 
 esp_err_t ameng_ai_generate(const ameng_state_t *state,
                             ameng_room_t player_room,

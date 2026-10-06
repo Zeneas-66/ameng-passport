@@ -194,8 +194,11 @@ void app_main(void)
         s_pet = saved.pet;
         s_logical_base = saved.logical_now_s;
     } else {
-        s_logical_base = 0;
-        ameng_state_init(&s_pet, 0);
+        /* No battery-backed wall clock is available in the baseline hardware.
+         * Start the first logical day at noon so a fresh Ameng does not boot
+         * directly into the night/sleep branch. The logical clock is persisted. */
+        s_logical_base = 12ULL * 3600ULL;
+        ameng_state_init(&s_pet, s_logical_base);
     }
     s_last_save_s = s_logical_base;
 

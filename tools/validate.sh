@@ -25,6 +25,10 @@ run_static_checks() {
 
     test_dir="$(mktemp -d /tmp/ai-passport-host-tests.XXXXXX)"
     "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
+        tests/test_ameng_pet.c main/ameng_pet.c \
+        -o "${test_dir}/test_ameng_pet"
+    "${test_dir}/test_ameng_pet"
+    "${CC:-cc}" -std=c11 -Wall -Wextra -Werror -Imain \
         tests/test_ui_pixel_math.c main/ui_pixel_math.c \
         -o "${test_dir}/test_ui_pixel_math"
     "${test_dir}/test_ui_pixel_math"

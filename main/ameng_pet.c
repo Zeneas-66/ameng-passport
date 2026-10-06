@@ -138,11 +138,11 @@ void ameng_state_init(ameng_state_t *s, uint64_t now_s)
 
     /* Ameng is not a blank pet: the relationship begins recognizable but has
      * room to deepen over months of this new digital life. */
-    s->affection_x10 = 560;
-    s->trust_x10 = 550;
-    s->familiarity_x10 = 500;
-    s->attachment_x10 = 420;
-    s->safety_x10 = 520;
+    s->affection_x10 = 720;
+    s->trust_x10 = 680;
+    s->familiarity_x10 = 700;
+    s->attachment_x10 = 620;
+    s->safety_x10 = 680;
 
     s->born_at_s = now_s;
     s->last_update_s = now_s;

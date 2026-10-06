@@ -59,6 +59,8 @@ static bool s_ready;
 static bool s_screen_off;
 static bool s_time_edit;
 static bool s_ai_busy;
+static bool s_dirty;
+static uint64_t s_dirty_since;
 static bool s_ignore_wake_events;
 static bsp_btn_t s_wake_button;
 
@@ -108,7 +110,14 @@ static void save_state(void)
         ESP_LOGW(TAG, "save failed: %s", esp_err_to_name(err));
     } else {
         s_last_save_s = saved.logical_now_s;
+        s_dirty = false;
     }
+}
+
+static void mark_dirty(uint64_t n)
+{
+    s_dirty = true;
+    s_dirty_since = n;
 }
 
 static void ui_pet_refresh(void)
@@ -238,7 +247,9 @@ static void do_pet_action(ameng_ui_action_t action)
         break;
     }
 
-    save_state();
+    /* Delay NVS writes until the short meow has finished. Flash/cache stalls
+     * during active PCM playback are a known source of audio glitches. */
+    mark_dirty(n);
     if (bsp_lvgl_lock(250)) {
         ui_pet_refresh();
         bsp_lvgl_unlock();
@@ -489,7 +500,11 @@ static void input_task(void *arg)
                 }
             }
 
-            if (n - s_last_save_s >= SAVE_INTERVAL_S) save_state();
+            if (s_dirty && n >= s_dirty_since + 2) {
+                save_state();
+            } else if (n - s_last_save_s >= SAVE_INTERVAL_S) {
+                save_state();
+            }
         }
 
         if (s_ui.page == AMENG_PAGE_PET && !s_screen_off) {

@@ -193,8 +193,28 @@ esp_err_t ameng_ai_generate(const ameng_state_t *state, uint64_t now_s,
         cJSON_Delete(parsed);
         return ESP_ERR_INVALID_RESPONSE;
     }
-    snprintf(out, out_size, "%s", content->valuestring);
+    /* The built-in UI font intentionally stays tiny. Normalize cloud output
+     * to one short printable-ASCII line so unexpected Unicode/newlines never
+     * turn into missing-glyph boxes or overflow the speech bubble. */
+    size_t w = 0;
+    bool last_space = false;
+    const unsigned char *p = (const unsigned char *)content->valuestring;
+    while (*p && w + 1 < out_size) {
+        unsigned char ch = *p++;
+        if (ch == '\n' || ch == '\r' || ch == '\t') ch = ' ';
+        if (ch < 0x20 || ch > 0x7e) ch = '?';
+        if (ch == ' ') {
+            if (last_space) continue;
+            last_space = true;
+        } else {
+            last_space = false;
+        }
+        out[w++] = (char)ch;
+        if (w >= 60) break;
+    }
+    while (w > 0 && out[w - 1] == ' ') --w;
+    out[w] = '\0';
     cJSON_Delete(parsed);
-    return ESP_OK;
+    return w > 0 ? ESP_OK : ESP_ERR_INVALID_RESPONSE;
 #endif
 }

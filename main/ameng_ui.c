@@ -535,7 +535,7 @@ void ameng_ui_render_settings(ameng_ui_t *ui, uint8_t brightness,
     lv_label_set_text_fmt(ui->settings_values[0], "%u%%", brightness);
     lv_label_set_text_fmt(ui->settings_values[1], "%u%%", volume);
     lv_label_set_text_fmt(ui->settings_values[2], "%02u:00", hour);
-    lv_label_set_text(ui->settings_values[3], "Ameng V2");
+    lv_label_set_text(ui->settings_values[3], "阿猛 V2");
 }
 
 void ameng_ui_start_animation(ameng_ui_t *ui, ameng_anim_t anim)

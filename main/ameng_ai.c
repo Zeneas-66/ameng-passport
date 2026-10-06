@@ -13,13 +13,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+static bool s_initialized;
+static bool s_enabled;
+
+#if CONFIG_AMENG_AI_ENABLE
 static const char *TAG = "ameng_ai";
 #define WIFI_CONNECTED_BIT BIT0
 #define AI_RESPONSE_MAX 2048
-
 static EventGroupHandle_t s_wifi_events;
-static bool s_initialized;
-static bool s_enabled;
 
 static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
@@ -91,8 +92,12 @@ bool ameng_ai_enabled(void)
 
 bool ameng_ai_online(void)
 {
+#if !CONFIG_AMENG_AI_ENABLE
+    return false;
+#else
     if (!s_enabled || !s_wifi_events) return false;
     return (xEventGroupGetBits(s_wifi_events) & WIFI_CONNECTED_BIT) != 0;
+#endif
 }
 
 typedef struct {
@@ -160,6 +165,7 @@ static void copy_short_chinese(const char *src, char *out, size_t out_size)
     }
     out[w] = '\0';
 }
+#endif /* CONFIG_AMENG_AI_ENABLE */
 
 esp_err_t ameng_ai_generate(const ameng_state_t *state,
                             ameng_room_t player_room,

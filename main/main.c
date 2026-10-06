@@ -121,18 +121,35 @@ static void input_task(void *arg)
 {
     (void)arg;
     input_event_t e;
-    while (xQueueReceive(s_input_queue, &e, portMAX_DELAY) == pdTRUE) {
-        if (e.ev != BSP_BTN_CLICK) continue;
-        if (e.btn == BSP_BTN_UP) {
-            s_selected = (ameng_ui_action_t)((s_selected + AMENG_UI_ACTION_COUNT - 1) % AMENG_UI_ACTION_COUNT);
-        } else if (e.btn == BSP_BTN_DOWN) {
-            s_selected = (ameng_ui_action_t)((s_selected + 1) % AMENG_UI_ACTION_COUNT);
-        } else if (e.btn == BSP_BTN_OK) {
-            do_action(s_selected);
+    uint64_t last_tick = now_s();
+
+    for (;;) {
+        bool got = xQueueReceive(s_input_queue, &e, pdMS_TO_TICKS(250)) == pdTRUE;
+        if (got && e.ev == BSP_BTN_CLICK) {
+            if (e.btn == BSP_BTN_UP) {
+                s_selected = (ameng_ui_action_t)((s_selected + AMENG_UI_ACTION_COUNT - 1) % AMENG_UI_ACTION_COUNT);
+            } else if (e.btn == BSP_BTN_DOWN) {
+                s_selected = (ameng_ui_action_t)((s_selected + 1) % AMENG_UI_ACTION_COUNT);
+            } else if (e.btn == BSP_BTN_OK) {
+                do_action(s_selected);
+            }
+            if (bsp_lvgl_lock(200)) {
+                ameng_ui_set_selected(&s_ui, s_selected);
+                bsp_lvgl_unlock();
+            }
         }
-        if (bsp_lvgl_lock(200)) {
-            ameng_ui_set_selected(&s_ui, s_selected);
-            bsp_lvgl_unlock();
+
+        uint64_t n = now_s();
+        if (n != last_tick) {
+            last_tick = n;
+            ameng_state_advance(&s_pet, n, local_hour(n));
+            if (bsp_lvgl_lock(250)) {
+                ameng_ui_tick(&s_ui, current_behavior());
+                ameng_ui_render(&s_ui, &s_pet, current_behavior(),
+                                bsp_battery_soc(), ameng_ai_online());
+                bsp_lvgl_unlock();
+            }
+            if (n - s_last_save_s >= SAVE_INTERVAL_S) save_state();
         }
     }
 }
@@ -150,26 +167,9 @@ static void ai_task(void *arg)
         }
         if (bsp_lvgl_lock(500)) {
             ameng_ui_set_dialogue(&s_ui, line);
-            ameng_ui_render(&s_ui, &s_pet, current_behavior(), bsp_battery_soc(), ameng_ai_online());
             bsp_lvgl_unlock();
         }
         s_ai_busy = false;
-    }
-}
-
-static void pet_task(void *arg)
-{
-    (void)arg;
-    while (1) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        uint64_t n = now_s();
-        ameng_state_advance(&s_pet, n, local_hour(n));
-        if (bsp_lvgl_lock(250)) {
-            ameng_ui_tick(&s_ui, current_behavior());
-            ameng_ui_render(&s_ui, &s_pet, current_behavior(), bsp_battery_soc(), ameng_ai_online());
-            bsp_lvgl_unlock();
-        }
-        if (n - s_last_save_s >= SAVE_INTERVAL_S) save_state();
     }
 }
 
@@ -222,7 +222,6 @@ void app_main(void)
         return;
     }
     if (xTaskCreate(input_task, "ameng_input", 4096, NULL, 5, NULL) != pdPASS ||
-        xTaskCreate(pet_task, "ameng_pet", 4096, NULL, 4, NULL) != pdPASS ||
         xTaskCreate(ai_task, "ameng_ai", 6144, NULL, 3, NULL) != pdPASS) {
         ESP_LOGE(TAG, "task creation failed");
         return;

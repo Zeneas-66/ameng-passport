@@ -35,7 +35,12 @@ Store reusable source images and generated display assets in `images/`.
 
 ## Music and sound effects
 
-Store reusable music and sound-effect sources in `music/`.
+Store reusable music and sound-effect sources in `music/` or `audio/`.
+
+| File | Format | Use and source |
+| --- | --- | --- |
+| [`audio/ameng_meow.wav`](audio/ameng_meow.wav) | 22.05 kHz, 16-bit mono PCM WAV, ~1.4 s | Real cat meow used by Ameng. Derived from “Meow of a pleading cat.oga” by Heismark, public domain, via Wikimedia Commons. |
+
 
 - Document the source, license, sample rate, bit depth, channels, conversion command, and destination.
 - Prefer 16 kHz, 16-bit mono PCM when it matches the current BSP audio path.

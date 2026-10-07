@@ -9,14 +9,16 @@ config AMENG_AI_ENABLE
         local sdkconfig; do not commit them.
 
 config AMENG_WIFI_SSID
-    string "2.4 GHz Wi-Fi SSID"
+    string "2.4 GHz Wi-Fi SSID (also used for real-time clock sync)"
     default ""
-    depends on AMENG_AI_ENABLE
+    help
+        Optional. When configured, Ameng connects to Wi-Fi even if cloud AI is
+        disabled, so SNTP can keep the displayed clock and offline elapsed time
+        synchronized with the real world.
 
 config AMENG_WIFI_PASSWORD
     string "Wi-Fi password"
     default ""
-    depends on AMENG_AI_ENABLE
 
 config AMENG_AI_ENDPOINT
     string "AI Chat Completions endpoint"

@@ -6,24 +6,28 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_netif_sntp.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
-static const char *TAG = "ameng_ai";
+static const char *TAG __attribute__((unused)) = "ameng_ai";
 #define WIFI_CONNECTED_BIT BIT0
 #define AI_RESPONSE_MAX 2048
 
 static EventGroupHandle_t s_wifi_events;
 static bool s_initialized;
 static bool s_enabled;
+static bool s_sntp_started;
 
-static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
+static void __attribute__((unused)) wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
-    (void)arg; (void)data;
+    (void)arg;
+    (void)data;
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
@@ -31,6 +35,15 @@ static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
         esp_wifi_connect();
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         xEventGroupSetBits(s_wifi_events, WIFI_CONNECTED_BIT);
+        if (!s_sntp_started) {
+            esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+            esp_err_t err = esp_netif_sntp_init(&config);
+            if (err == ESP_OK || err == ESP_ERR_INVALID_STATE) {
+                s_sntp_started = true;
+            } else {
+                ESP_LOGW(TAG, "SNTP init failed: %s", esp_err_to_name(err));
+            }
+        }
     }
 }
 
@@ -39,19 +52,23 @@ esp_err_t ameng_ai_init(void)
     if (s_initialized) return ESP_OK;
     s_initialized = true;
 
-#if !CONFIG_AMENG_AI_ENABLE
-    s_enabled = false;
-    return ESP_OK;
-#else
-    if (CONFIG_AMENG_AI_API_KEY[0] == '\0' ||
-        CONFIG_AMENG_WIFI_SSID[0] == '\0' ||
-        CONFIG_AMENG_AI_ENDPOINT[0] == '\0') {
-        ESP_LOGW(TAG, "AI disabled: configure Wi-Fi and AI credentials in menuconfig");
+    /* Network time is useful even with cloud dialogue disabled. */
+    if (CONFIG_AMENG_WIFI_SSID[0] == '\0') {
         s_enabled = false;
+        ESP_LOGI(TAG, "Wi-Fi not configured; using persisted/manual clock");
         return ESP_OK;
     }
 
-    s_enabled = true;
+#if CONFIG_AMENG_AI_ENABLE
+    s_enabled = (CONFIG_AMENG_AI_API_KEY[0] != '\0' &&
+                 CONFIG_AMENG_AI_ENDPOINT[0] != '\0');
+    if (!s_enabled) {
+        ESP_LOGW(TAG, "cloud dialogue disabled: API settings incomplete; SNTP still enabled");
+    }
+#else
+    s_enabled = false;
+#endif
+
     s_wifi_events = xEventGroupCreate();
     if (!s_wifi_events) return ESP_ERR_NO_MEM;
 
@@ -74,14 +91,12 @@ esp_err_t ameng_ai_init(void)
     wifi_config_t wifi = {0};
     snprintf((char *)wifi.sta.ssid, sizeof(wifi.sta.ssid), "%s", CONFIG_AMENG_WIFI_SSID);
     snprintf((char *)wifi.sta.password, sizeof(wifi.sta.password), "%s", CONFIG_AMENG_WIFI_PASSWORD);
-    wifi.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
-    wifi.sta.sae_pwe_h2e = WPA3_SAE_PWE_BOTH;
+    wifi.sta.threshold.authmode = WIFI_AUTH_OPEN;
 
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err == ESP_OK) err = esp_wifi_set_config(WIFI_IF_STA, &wifi);
     if (err == ESP_OK) err = esp_wifi_start();
     return err;
-#endif
 }
 
 bool ameng_ai_enabled(void)
@@ -91,8 +106,19 @@ bool ameng_ai_enabled(void)
 
 bool ameng_ai_online(void)
 {
-    if (!s_enabled || !s_wifi_events) return false;
+    if (!s_wifi_events) return false;
     return (xEventGroupGetBits(s_wifi_events) & WIFI_CONNECTED_BIT) != 0;
+}
+
+uint64_t ameng_ai_real_epoch_s(void)
+{
+    time_t now = time(NULL);
+    return now >= (time_t)1700000000 ? (uint64_t)now : 0ULL;
+}
+
+bool ameng_ai_time_synced(void)
+{
+    return ameng_ai_real_epoch_s() != 0ULL;
 }
 
 typedef struct {
@@ -101,7 +127,7 @@ typedef struct {
     size_t used;
 } response_buf_t;
 
-static esp_err_t http_event(esp_http_client_event_t *evt)
+static esp_err_t __attribute__((unused)) http_event(esp_http_client_event_t *evt)
 {
     response_buf_t *r = evt->user_data;
     if (evt->event_id == HTTP_EVENT_ON_DATA && r && evt->data_len > 0) {
@@ -116,33 +142,63 @@ static esp_err_t http_event(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-esp_err_t ameng_ai_generate(const ameng_state_t *state, uint64_t now_s,
-                            uint8_t local_hour, char *out, size_t out_size)
+static void __attribute__((unused)) copy_short_ascii(const char *src, char *out, size_t out_size)
+{
+    if (!src || !out || out_size == 0) return;
+    size_t w = 0;
+    for (const unsigned char *p = (const unsigned char *)src; *p && w + 1 < out_size; ++p) {
+        unsigned char ch = *p;
+        if (ch == '\n' || ch == '\r' || ch == '\t') ch = ' ';
+        if (ch < 0x20 || ch > 0x7e || ch == '"' || ch == '\'') continue;
+        if (w && ch == ' ' && out[w - 1] == ' ') continue;
+        out[w++] = (char)ch;
+        if (w >= 48) break;
+    }
+    while (w && out[w - 1] == ' ') --w;
+    out[w] = '\0';
+}
+
+esp_err_t ameng_ai_generate(const ameng_state_t *state,
+                            ameng_room_t player_room,
+                            uint64_t now_s,
+                            uint8_t local_hour,
+                            char *out,
+                            size_t out_size)
 {
 #if !CONFIG_AMENG_AI_ENABLE
-    (void)state; (void)now_s; (void)local_hour; (void)out; (void)out_size;
+    (void)state;
+    (void)player_room;
+    (void)now_s;
+    (void)local_hour;
+    (void)out;
+    (void)out_size;
     return ESP_ERR_NOT_SUPPORTED;
 #else
     if (!state || !out || out_size == 0) return ESP_ERR_INVALID_ARG;
     if (!ameng_ai_online()) return ESP_ERR_INVALID_STATE;
 
-    char facts[768];
-    if (ameng_state_ai_context(state, now_s, local_hour, facts, sizeof(facts)) < 0) {
+    char facts[896];
+    if (ameng_state_ai_context(state, player_room, now_s, local_hour,
+                               facts, sizeof(facts)) < 0) {
         return ESP_ERR_INVALID_SIZE;
     }
 
     cJSON *root = cJSON_CreateObject();
     cJSON *messages = cJSON_AddArrayToObject(root, "messages");
     cJSON_AddStringToObject(root, "model", CONFIG_AMENG_AI_MODEL);
-    cJSON_AddNumberToObject(root, "temperature", 0.8);
-    cJSON_AddNumberToObject(root, "max_tokens", 40);
+    cJSON_AddNumberToObject(root, "temperature", 0.85);
+    cJSON_AddNumberToObject(root, "max_tokens", 48);
 
     cJSON *system = cJSON_CreateObject();
     cJSON_AddStringToObject(system, "role", "system");
     cJSON_AddStringToObject(system, "content",
-        "You are Ameng, a large long-haired white-and-yellow cat: proud, quiet, food-loving, "
-        "aloof-looking but deeply affectionate. Reply as Ameng in one short ASCII-only sentence, "
-        "max 36 characters. Never invent memories. Never contradict AMENG_FACTS.");
+        "You are Ameng, a very large long-haired white cat with pale yellow fur "
+        "on both sides of the crown, a yellowish tail, and a yellow patch on HIS "
+        "left side of the mouth. He is proud, quiet, food-loving, aloof-looking "
+        "but affectionate once familiar. Output only the short English meaning "
+        "that goes inside parentheses. Do not output MEOW or parentheses. "
+        "Use at most 8 short words. Never invent past memories outside AMENG_FACTS "
+        "and never contradict current hunger, energy, mood, or location.");
     cJSON_AddItemToArray(messages, system);
 
     cJSON *user = cJSON_CreateObject();
@@ -193,28 +249,9 @@ esp_err_t ameng_ai_generate(const ameng_state_t *state, uint64_t now_s,
         cJSON_Delete(parsed);
         return ESP_ERR_INVALID_RESPONSE;
     }
-    /* The built-in UI font intentionally stays tiny. Normalize cloud output
-     * to one short printable-ASCII line so unexpected Unicode/newlines never
-     * turn into missing-glyph boxes or overflow the speech bubble. */
-    size_t w = 0;
-    bool last_space = false;
-    const unsigned char *p = (const unsigned char *)content->valuestring;
-    while (*p && w + 1 < out_size) {
-        unsigned char ch = *p++;
-        if (ch == '\n' || ch == '\r' || ch == '\t') ch = ' ';
-        if (ch < 0x20 || ch > 0x7e) ch = '?';
-        if (ch == ' ') {
-            if (last_space) continue;
-            last_space = true;
-        } else {
-            last_space = false;
-        }
-        out[w++] = (char)ch;
-        if (w >= 60) break;
-    }
-    while (w > 0 && out[w - 1] == ' ') --w;
-    out[w] = '\0';
+
+    copy_short_ascii(content->valuestring, out, out_size);
     cJSON_Delete(parsed);
-    return w > 0 ? ESP_OK : ESP_ERR_INVALID_RESPONSE;
+    return out[0] ? ESP_OK : ESP_ERR_INVALID_RESPONSE;
 #endif
 }

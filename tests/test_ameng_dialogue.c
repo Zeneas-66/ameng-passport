@@ -14,9 +14,9 @@ int main(void)
     s.hunger = 90;
 
     ameng_dialogue_local(&s, AMENG_LINE_TALK, 100, 12, out, sizeof(out));
-    assert(strncmp(out, "喵", strlen("喵")) == 0);
-    assert(strstr(out, "（") != 0);
-    assert(strstr(out, "）") != 0);
+    assert(strstr(out, "MEOW") != 0 || strstr(out, "MROW") != 0 || strstr(out, "MEE") != 0);
+    assert(strstr(out, "(") != 0);
+    assert(strstr(out, ")") != 0);
 
     s.hunger = 20;
     s.energy = 80;
@@ -26,9 +26,9 @@ int main(void)
     assert(strlen(meaning) > 0);
 
     ameng_dialogue_wrap(&s, AMENG_LINE_CALL_COMES, 200,
-                        "来了", out, sizeof(out));
-    assert(strstr(out, "来了") != 0);
-    assert(strncmp(out, "喵", strlen("喵")) == 0);
+                        "COMING", out, sizeof(out));
+    assert(strstr(out, "COMING") != 0);
+    assert(strstr(out, "MEOW") != 0 || strstr(out, "MROW") != 0 || strstr(out, "MEE") != 0);
 
     return 0;
 }

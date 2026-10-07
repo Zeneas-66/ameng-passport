@@ -46,7 +46,9 @@ static QueueHandle_t s_ai_queue;
 static uint64_t s_logical_base;
 static int64_t s_boot_us;
 static uint64_t s_last_save_s;
+static uint64_t s_last_real_epoch_s;
 static int16_t s_clock_offset_minutes;
+static bool s_time_reconciled;
 
 static ameng_room_t s_player_room = AMENG_ROOM_LIVING;
 static ameng_ui_action_t s_action = AMENG_UI_CALL;
@@ -73,7 +75,9 @@ static uint64_t now_s(void)
 
 static uint16_t local_minute_of_day(uint64_t t)
 {
-    int64_t total = (int64_t)(t / 60ULL) + s_clock_offset_minutes;
+    uint64_t real = ameng_ai_real_epoch_s();
+    uint64_t source = real ? real : t;
+    int64_t total = (int64_t)(source / 60ULL) + s_clock_offset_minutes;
     total %= 1440;
     if (total < 0) total += 1440;
     return (uint16_t)total;
@@ -100,6 +104,8 @@ static void save_state(void)
     ameng_saved_t saved = {
         .pet = s_pet,
         .logical_now_s = now_s(),
+        .last_real_epoch_s = ameng_ai_real_epoch_s() ? ameng_ai_real_epoch_s()
+                                                       : s_last_real_epoch_s,
         .clock_offset_minutes = s_clock_offset_minutes,
         .brightness = s_brightness,
         .volume = s_volume,
@@ -118,6 +124,36 @@ static void mark_dirty(uint64_t n)
 {
     s_dirty = true;
     s_dirty_since = n;
+}
+
+static void reconcile_real_time_if_ready(void)
+{
+    if (s_time_reconciled) return;
+
+    uint64_t real = ameng_ai_real_epoch_s();
+    if (!real) return;
+
+    uint64_t boot_elapsed = 0;
+    int64_t elapsed_us = esp_timer_get_time() - s_boot_us;
+    if (elapsed_us > 0) boot_elapsed = (uint64_t)(elapsed_us / 1000000LL);
+
+    if (s_last_real_epoch_s > 0 && real > s_last_real_epoch_s) {
+        uint64_t wall_delta = real - s_last_real_epoch_s;
+        uint64_t offline_delta = wall_delta > boot_elapsed
+                               ? wall_delta - boot_elapsed : 0;
+        s_logical_base += offline_delta;
+        ESP_LOGI(TAG, "real time restored, offline elapsed=%llu s",
+                 (unsigned long long)offline_delta);
+    } else {
+        ESP_LOGI(TAG, "real time synchronized for the first time");
+    }
+
+    s_last_real_epoch_s = real;
+    s_time_reconciled = true;
+
+    uint64_t n = now_s();
+    ameng_state_advance(&s_pet, n, local_hour(n));
+    mark_dirty(n);
 }
 
 static void ui_pet_refresh(void)
@@ -468,6 +504,7 @@ static void input_task(void *arg)
             else if (s_ui.page == AMENG_PAGE_SETTINGS) handle_settings_key(&e);
         }
 
+        reconcile_real_time_if_ready();
         uint64_t n = now_s();
         if (n != last_second) {
             last_second = n;
@@ -569,6 +606,7 @@ void app_main(void)
     if (load == ESP_OK && found) {
         s_pet = saved.pet;
         s_logical_base = saved.logical_now_s;
+        s_last_real_epoch_s = saved.last_real_epoch_s;
         s_clock_offset_minutes = saved.clock_offset_minutes;
         s_brightness = saved.brightness ? saved.brightness : SCREEN_BRIGHTNESS_DEFAULT;
         s_volume = saved.volume;
@@ -576,7 +614,8 @@ void app_main(void)
                       ? saved.player_room : AMENG_ROOM_LIVING;
     } else {
         s_logical_base = 12ULL * 3600ULL;
-        s_clock_offset_minutes = 0;
+        s_last_real_epoch_s = 0;
+        s_clock_offset_minutes = 8 * 60;
         s_brightness = SCREEN_BRIGHTNESS_DEFAULT;
         s_volume = AUDIO_VOLUME_DEFAULT;
         s_player_room = AMENG_ROOM_LIVING;

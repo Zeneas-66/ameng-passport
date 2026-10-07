@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define AMENG_SETTINGS_COUNT 6
+
 typedef enum {
     AMENG_PAGE_HOME = 0,
     AMENG_PAGE_PET,
@@ -66,10 +68,12 @@ typedef struct {
 
     lv_obj_t *status_panel;
     lv_obj_t *status_title;
-    lv_obj_t *status_lines[8];
+    lv_obj_t *status_keys[8];
+    lv_obj_t *status_values[8];
+    lv_obj_t *status_hint;
 
-    lv_obj_t *settings_items[4];
-    lv_obj_t *settings_values[4];
+    lv_obj_t *settings_items[AMENG_SETTINGS_COUNT];
+    lv_obj_t *settings_values[AMENG_SETTINGS_COUNT];
     lv_obj_t *settings_hint;
 
     ameng_page_t page;
@@ -99,7 +103,9 @@ void ameng_ui_render_pet(ameng_ui_t *ui, const ameng_state_t *state,
                          int battery, bool ai_online);
 void ameng_ui_render_status(ameng_ui_t *ui, const ameng_state_t *state);
 void ameng_ui_render_settings(ameng_ui_t *ui, uint8_t brightness,
-                              uint8_t volume, uint8_t hour);
+                              uint8_t volume, uint8_t hour,
+                              bool wifi_enabled, bool wifi_online,
+                              bool time_synced);
 
 void ameng_ui_start_animation(ameng_ui_t *ui, ameng_anim_t anim);
 void ameng_ui_tick(ameng_ui_t *ui, const ameng_state_t *state,

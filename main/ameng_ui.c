@@ -200,35 +200,51 @@ static void create_study(lv_obj_t *p)
 static void create_header(ameng_ui_t *ui)
 {
     box(ui->pet_panel, 0, 0, 240, 36, C_DARK, 0);
+
     ui->room_label = label(ui->pet_panel, "LIVING", font_ui(), C_PAPER);
     lv_obj_set_pos(ui->room_label, 8, 10);
-    lv_obj_set_width(ui->room_label, 72);
+    lv_obj_set_size(ui->room_label, 72, 16);
     lv_obj_set_style_text_align(ui->room_label, LV_TEXT_ALIGN_LEFT, 0);
 
     ui->time_label = label(ui->pet_panel, "12:00", font_ui(), C_PAPER);
     lv_obj_set_pos(ui->time_label, 80, 10);
-    lv_obj_set_width(ui->time_label, 80);
+    lv_obj_set_size(ui->time_label, 80, 16);
     lv_obj_set_style_text_align(ui->time_label, LV_TEXT_ALIGN_CENTER, 0);
 
     ui->battery_label = label(ui->pet_panel, "--%", font_ui(), C_PAPER);
     lv_obj_set_pos(ui->battery_label, 160, 10);
-    lv_obj_set_width(ui->battery_label, 72);
+    lv_obj_set_size(ui->battery_label, 72, 16);
     lv_obj_set_style_text_align(ui->battery_label, LV_TEXT_ALIGN_RIGHT, 0);
 }
 
 static void create_status(ameng_ui_t *ui)
 {
-    ui->status_panel = box(ui->pet_panel, 18, 43, 204, 202, C_PAPER, 10);
-    lv_obj_set_style_border_width(ui->status_panel, 2, 0);
-    lv_obj_set_style_border_color(ui->status_panel, lv_color_hex(C_GOLD), 0);
+    ui->status_panel = box(ui->pet_panel, 12, 40, 216, 198, C_PAPER, 8);
 
     ui->status_title = label(ui->status_panel, "AMENG STATUS", font_ui(), C_INK);
-    lv_obj_set_pos(ui->status_title, 14, 10);
+    lv_obj_set_pos(ui->status_title, 12, 8);
 
+    static const char *keys[8] = {
+        "MOOD", "HUNGER", "THIRST", "ENERGY",
+        "PLAY", "AFFECTION", "TRUST", "TOGETHER"
+    };
     for (int i = 0; i < 8; ++i) {
-        ui->status_lines[i] = label(ui->status_panel, "", font_ui(), C_INK);
-        lv_obj_set_pos(ui->status_lines[i], 15, 38 + i * 19);
+        int y = 32 + i * 18;
+        ui->status_keys[i] = label(ui->status_panel, keys[i], font_ui(), C_MUTED);
+        lv_obj_set_pos(ui->status_keys[i], 12, y);
+        lv_obj_set_width(ui->status_keys[i], 78);
+        lv_obj_set_style_text_align(ui->status_keys[i], LV_TEXT_ALIGN_LEFT, 0);
+
+        ui->status_values[i] = label(ui->status_panel, "", font_ui(), C_INK);
+        lv_obj_set_pos(ui->status_values[i], 96, y);
+        lv_obj_set_width(ui->status_values[i], 106);
+        lv_obj_set_style_text_align(ui->status_values[i], LV_TEXT_ALIGN_LEFT, 0);
     }
+
+    ui->status_hint = label(ui->status_panel, "OK PHOTOS   HOLD UP CLOSE", font_ui(), C_ACCENT);
+    lv_obj_set_pos(ui->status_hint, 8, 178);
+    lv_obj_set_width(ui->status_hint, 200);
+    lv_obj_set_style_text_align(ui->status_hint, LV_TEXT_ALIGN_CENTER, 0);
     hide(ui->status_panel, true);
 }
 
@@ -298,28 +314,34 @@ void ameng_ui_create(ameng_ui_t *ui)
         lv_obj_set_pos(ui->action_labels[i], 2 + i * 47, 255);
     }
     lv_obj_t *pet_hint = label(ui->pet_panel,
-                               "HOLD UP:STATUS  DN:ROOM\nHOLD OK:SLEEP",
+                               "HOLD UP STATUS   DN ROOM\nHOLD OK SLEEP",
                                font_ui(), 0xBFB5AA);
     lv_obj_set_width(pet_hint, 236);
     lv_obj_set_style_text_align(pet_hint, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_pos(pet_hint, 2, 294);
+    lv_obj_set_style_text_line_space(pet_hint, 0, 0);
+    lv_obj_set_pos(pet_hint, 2, 276);
     create_status(ui);
 
     /* Settings page. */
     lv_obj_t *st = label(ui->settings_panel, "SETTINGS", &lv_font_montserrat_20, C_INK);
-    lv_obj_set_pos(st, 18, 20);
-    static const char *setting_names[4] = {"BRIGHTNESS", "VOLUME", "CLOCK", "ABOUT"};
-    for (int i = 0; i < 4; ++i) {
-        lv_obj_t *row = box(ui->settings_panel, 16, 62 + i * 48, 208, 40, C_PAPER, 7);
+    lv_obj_set_pos(st, 18, 16);
+    static const char *setting_names[AMENG_SETTINGS_COUNT] = {
+        "BRIGHTNESS", "VOLUME", "WIFI", "CLOCK", "PHOTOS", "ABOUT"
+    };
+    for (int i = 0; i < AMENG_SETTINGS_COUNT; ++i) {
+        lv_obj_t *row = box(ui->settings_panel, 16, 48 + i * 38, 208, 32, C_PAPER, 7);
         ui->settings_items[i] = label(row, setting_names[i], font_ui(), C_INK);
-        lv_obj_set_pos(ui->settings_items[i], 11, 10);
+        lv_obj_set_pos(ui->settings_items[i], 10, 8);
         ui->settings_values[i] = label(row, "", font_ui(), C_MUTED);
         lv_obj_align(ui->settings_values[i], LV_ALIGN_RIGHT_MID, -10, 0);
     }
     ui->settings_hint = label(ui->settings_panel,
-                              "UP/DOWN SELECT  OK CHANGE  DOUBLE OK BACK",
+                              "UP/DOWN SELECT  OK CHANGE\nDOUBLE OK BACK",
                               font_ui(), C_MUTED);
-    lv_obj_align(ui->settings_hint, LV_ALIGN_BOTTOM_MID, 0, -23);
+    lv_obj_set_width(ui->settings_hint, 236);
+    lv_obj_set_style_text_align(ui->settings_hint, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_line_space(ui->settings_hint, 0, 0);
+    lv_obj_set_pos(ui->settings_hint, 2, 282);
 
     ui->page = AMENG_PAGE_PET;
     ui->selected_action = AMENG_UI_CALL;
@@ -367,9 +389,9 @@ void ameng_ui_set_action(ameng_ui_t *ui, ameng_ui_action_t action)
 void ameng_ui_set_settings_selected(ameng_ui_t *ui, uint8_t selected)
 {
     if (!ui) return;
-    selected %= 4;
+    selected %= AMENG_SETTINGS_COUNT;
     ui->settings_selected = selected;
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < AMENG_SETTINGS_COUNT; ++i) {
         lv_obj_t *parent = lv_obj_get_parent(ui->settings_items[i]);
         lv_obj_set_style_border_width(parent, i == selected ? 2 : 0, 0);
         lv_obj_set_style_border_color(parent, lv_color_hex(C_ACCENT), 0);
@@ -437,16 +459,16 @@ static const char *play_word(uint8_t v)
 void ameng_ui_render_status(ameng_ui_t *ui, const ameng_state_t *s)
 {
     if (!ui || !s) return;
-    lv_label_set_text_fmt(ui->status_lines[0], "MOOD   %s", mood_word(s->mood));
-    lv_label_set_text_fmt(ui->status_lines[1], "HUNGER %s", need_word(s->hunger, "HUNGRY"));
-    lv_label_set_text_fmt(ui->status_lines[2], "THIRST %s", need_word(s->thirst, "THIRSTY"));
-    lv_label_set_text_fmt(ui->status_lines[3], "ENERGY %s", energy_word(s->energy));
-    lv_label_set_text_fmt(ui->status_lines[4], "PLAY   %s", play_word(s->play_drive));
-    lv_label_set_text_fmt(ui->status_lines[5], "AFFECTION %u",
+    lv_label_set_text(ui->status_values[0], mood_word(s->mood));
+    lv_label_set_text(ui->status_values[1], need_word(s->hunger, "HUNGRY"));
+    lv_label_set_text(ui->status_values[2], need_word(s->thirst, "THIRSTY"));
+    lv_label_set_text(ui->status_values[3], energy_word(s->energy));
+    lv_label_set_text(ui->status_values[4], play_word(s->play_drive));
+    lv_label_set_text_fmt(ui->status_values[5], "%u",
                           ameng_relationship_percent(s->affection_x10));
-    lv_label_set_text_fmt(ui->status_lines[6], "TRUST     %u",
+    lv_label_set_text_fmt(ui->status_values[6], "%u",
                           ameng_relationship_percent(s->trust_x10));
-    lv_label_set_text_fmt(ui->status_lines[7], "TOGETHER  %lu DAYS",
+    lv_label_set_text_fmt(ui->status_values[7], "%lu DAYS",
                           (unsigned long)(s->days_together + 1));
 }
 
@@ -524,13 +546,19 @@ void ameng_ui_render_pet(ameng_ui_t *ui, const ameng_state_t *s,
 }
 
 void ameng_ui_render_settings(ameng_ui_t *ui, uint8_t brightness,
-                              uint8_t volume, uint8_t hour)
+                              uint8_t volume, uint8_t hour,
+                              bool wifi_enabled, bool wifi_online,
+                              bool time_synced)
 {
     if (!ui) return;
     lv_label_set_text_fmt(ui->settings_values[0], "%u%%", brightness);
     lv_label_set_text_fmt(ui->settings_values[1], "%u%%", volume);
-    lv_label_set_text_fmt(ui->settings_values[2], "%02u:00", hour);
-    lv_label_set_text(ui->settings_values[3], "AMENG V2");
+    lv_label_set_text(ui->settings_values[2],
+                      !wifi_enabled ? "OFF" : (wifi_online ? "ONLINE" : "CONNECT"));
+    lv_label_set_text_fmt(ui->settings_values[3], "%02u:00 %s",
+                          hour, time_synced ? "SYNC" : "MANUAL");
+    lv_label_set_text(ui->settings_values[4], "9 IMAGES");
+    lv_label_set_text(ui->settings_values[5], "AMENG V2");
 }
 
 void ameng_ui_start_animation(ameng_ui_t *ui, ameng_anim_t anim)

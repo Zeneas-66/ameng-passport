@@ -172,7 +172,34 @@ static void show_plain_message(const char *text)
     bsp_lvgl_unlock();
 }
 
-static void show_cat_message(ameng_line_reason_t reason, uint8_t sound_variant)
+static ameng_meow_t meow_for_state(ameng_line_reason_t reason)
+{
+    if (s_pet.hunger >= 82) return AMENG_MEOW_PLEADING;
+    if (s_pet.sleeping || s_pet.energy <= 20) return AMENG_MEOW_LOW;
+
+    switch (reason) {
+    case AMENG_LINE_PLAY:
+        return AMENG_MEOW_QUICK;
+    case AMENG_LINE_PET:
+        return AMENG_MEOW_SOFT;
+    case AMENG_LINE_FEED:
+        return AMENG_MEOW_SOCIAL;
+    case AMENG_LINE_CALL_FAR:
+        return s_pet.mood < 45 ? AMENG_MEOW_LOW : AMENG_MEOW_SOCIAL;
+    case AMENG_LINE_CALL_COMES:
+        return AMENG_MEOW_SOCIAL;
+    case AMENG_LINE_CALL_SAME:
+        return s_pet.mood >= 70 ? AMENG_MEOW_SOFT : AMENG_MEOW_SOCIAL;
+    case AMENG_LINE_TIRED:
+        return AMENG_MEOW_LOW;
+    case AMENG_LINE_TALK:
+    case AMENG_LINE_IDLE:
+    default:
+        return s_pet.mood >= 65 ? AMENG_MEOW_SOFT : AMENG_MEOW_SOCIAL;
+    }
+}
+
+static void show_cat_message(ameng_line_reason_t reason)
 {
     char line[160];
     uint64_t n = now_s();
@@ -181,7 +208,7 @@ static void show_cat_message(ameng_line_reason_t reason, uint8_t sound_variant)
         ameng_ui_set_dialogue(&s_ui, line, true);
         bsp_lvgl_unlock();
     }
-    ameng_audio_meow(sound_variant);
+    ameng_audio_meow(meow_for_state(reason));
 }
 
 static bool require_ameng_here(const char *missing_text)
@@ -203,7 +230,7 @@ static void queue_ai_talk(uint64_t n)
         s_ai_busy = true;
         show_plain_message("MEOW... (LET ME THINK)");
     } else {
-        show_cat_message(AMENG_LINE_TALK, 2);
+        show_cat_message(AMENG_LINE_TALK);
     }
 }
 
@@ -217,16 +244,16 @@ static void do_pet_action(ameng_ui_action_t action)
         ameng_call_result_t result =
             ameng_state_call(&s_pet, s_player_room, n, hour);
         if (result == AMENG_CALL_SAME_ROOM) {
-            show_cat_message(AMENG_LINE_CALL_SAME, (uint8_t)(s_pet.daily_calls % 6));
+            show_cat_message(AMENG_LINE_CALL_SAME)(s_pet.daily_calls % 6));
         } else if (result == AMENG_CALL_COMES) {
-            show_cat_message(AMENG_LINE_CALL_COMES, (uint8_t)(s_pet.daily_calls % 6));
+            show_cat_message(AMENG_LINE_CALL_COMES)(s_pet.daily_calls % 6));
             s_pet.cat_depth = 1;
             if (bsp_lvgl_lock(250)) {
                 ameng_ui_start_animation(&s_ui, AMENG_ANIM_ENTER);
                 bsp_lvgl_unlock();
             }
         } else {
-            show_cat_message(AMENG_LINE_CALL_FAR, (uint8_t)(s_pet.daily_calls % 6));
+            show_cat_message(AMENG_LINE_CALL_FAR)(s_pet.daily_calls % 6));
         }
         break;
     }
@@ -234,14 +261,14 @@ static void do_pet_action(ameng_ui_action_t action)
     case AMENG_UI_FEED:
         if (!require_ameng_here("AMENG ISN'T HERE. CALL HIM FIRST.")) break;
         if (ameng_state_interact(&s_pet, AMENG_ACTION_FEED, s_player_room, n, hour)) {
-            show_cat_message(AMENG_LINE_FEED, 1);
+            show_cat_message(AMENG_LINE_FEED);
         }
         break;
 
     case AMENG_UI_PET:
         if (!require_ameng_here("AMENG ISN'T HERE. CALL HIM FIRST.")) break;
         if (ameng_state_interact(&s_pet, AMENG_ACTION_PET, s_player_room, n, hour)) {
-            show_cat_message(AMENG_LINE_PET, 4);
+            show_cat_message(AMENG_LINE_PET);
             bool hug = ameng_relationship_percent(s_pet.affection_x10) >= 60 &&
                        ((s_pet.daily_pets + s_pet.mood) % 3U != 0);
             if (bsp_lvgl_lock(250)) {
@@ -256,13 +283,13 @@ static void do_pet_action(ameng_ui_action_t action)
         if (!require_ameng_here("AMENG ISN'T HERE. CALL HIM FIRST.")) break;
         if (ameng_state_interact(&s_pet, AMENG_ACTION_PLAY, s_player_room, n, hour)) {
             s_pet.cat_depth = 1;
-            show_cat_message(AMENG_LINE_PLAY, 5);
+            show_cat_message(AMENG_LINE_PLAY);
             if (bsp_lvgl_lock(250)) {
                 ameng_ui_start_animation(&s_ui, AMENG_ANIM_POUNCE);
                 bsp_lvgl_unlock();
             }
         } else {
-            show_cat_message(AMENG_LINE_TIRED, 3);
+            show_cat_message(AMENG_LINE_TIRED);
         }
         break;
 
@@ -275,7 +302,7 @@ static void do_pet_action(ameng_ui_action_t action)
         if (ameng_ai_enabled() && ameng_ai_online() && !s_ai_busy) {
             queue_ai_talk(n);
         } else {
-            show_cat_message(AMENG_LINE_TALK, 0);
+            show_cat_message(AMENG_LINE_TALK);
         }
         break;
 

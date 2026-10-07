@@ -39,7 +39,7 @@ Store reusable music and sound-effect sources in `music/` or `audio/`.
 
 | File | Format | Use and source |
 | --- | --- | --- |
-| [`audio/ameng_meow.wav`](audio/ameng_meow.wav) | 22.05 kHz, 16-bit mono PCM WAV, ~0.97 s | Real cat meow used by Ameng. Derived from “Meow of a Siamese cat - freemaster2.wav” by freemaster2, CC0 1.0, trimmed/downsampled/normalized by CureJe/sedentary-reminder. |
+| [`audio/ameng_meow.wav`](audio/ameng_meow.wav) | 22.05 kHz, 16-bit mono PCM WAV, ~1.4 s | Real cat meow used by Ameng. Derived from “Meow of a pleading cat.oga” by Heismark, public domain, via Wikimedia Commons. |
 
 
 - Document the source, license, sample rate, bit depth, channels, conversion command, and destination.

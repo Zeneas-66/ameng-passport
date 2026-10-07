@@ -1,22 +1,10 @@
 menu "Ameng companion"
 
-config AMENG_CARD_NAME
-    string "Local badge name"
-    default "AI PASSPORT"
-    help
-        Name shown on the local badge page. The factory WeChat badge protocol
-        is not part of the public repository, so this custom firmware keeps a
-        local badge page instead of pretending to support factory sync.
-
-config AMENG_CARD_BIO
-    string "Local badge bio"
-    default "阿猛陪伴版"
-
 config AMENG_AI_ENABLE
     bool "Enable optional cloud AI dialogue"
     default n
     help
-        Local pet logic always works without AI. When enabled, 对话 may call an
+        Local pet logic always works without AI. When enabled, TALK may call an
         OpenAI-compatible Chat Completions endpoint. Credentials stay in the
         local sdkconfig; do not commit them.
 

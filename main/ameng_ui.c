@@ -22,7 +22,7 @@
 
 static const lv_font_t *font_ui(void)
 {
-    return &lv_font_montserrat_14;
+    return &lv_font_montserrat_12;
 }
 
 static lv_obj_t *box(lv_obj_t *parent, int x, int y, int w, int h,
@@ -201,11 +201,19 @@ static void create_header(ameng_ui_t *ui)
 {
     box(ui->pet_panel, 0, 0, 240, 36, C_DARK, 0);
     ui->room_label = label(ui->pet_panel, "LIVING", font_ui(), C_PAPER);
-    lv_obj_set_pos(ui->room_label, 12, 8);
-    ui->time_label = label(ui->pet_panel, "12:00", &lv_font_montserrat_14, C_PAPER);
-    lv_obj_set_pos(ui->time_label, 88, 10);
-    ui->battery_label = label(ui->pet_panel, "--%", &lv_font_montserrat_14, C_PAPER);
-    lv_obj_align(ui->battery_label, LV_ALIGN_TOP_RIGHT, -12, 10);
+    lv_obj_set_pos(ui->room_label, 8, 10);
+    lv_obj_set_width(ui->room_label, 72);
+    lv_obj_set_style_text_align(ui->room_label, LV_TEXT_ALIGN_LEFT, 0);
+
+    ui->time_label = label(ui->pet_panel, "12:00", font_ui(), C_PAPER);
+    lv_obj_set_pos(ui->time_label, 80, 10);
+    lv_obj_set_width(ui->time_label, 80);
+    lv_obj_set_style_text_align(ui->time_label, LV_TEXT_ALIGN_CENTER, 0);
+
+    ui->battery_label = label(ui->pet_panel, "--%", font_ui(), C_PAPER);
+    lv_obj_set_pos(ui->battery_label, 160, 10);
+    lv_obj_set_width(ui->battery_label, 72);
+    lv_obj_set_style_text_align(ui->battery_label, LV_TEXT_ALIGN_RIGHT, 0);
 }
 
 static void create_status(ameng_ui_t *ui)
@@ -274,7 +282,7 @@ void ameng_ui_create(ameng_ui_t *ui)
 
     ui->speech_panel = box(ui->pet_panel, 12, 45, 216, 60, 0xFFFDF8, 8);
     ui->speech = label(ui->speech_panel, "", font_ui(), C_INK);
-    lv_obj_set_width(ui->speech, 192);
+    lv_obj_set_width(ui->speech, 198);
     lv_label_set_long_mode(ui->speech, LV_LABEL_LONG_WRAP);
     lv_obj_center(ui->speech);
     hide(ui->speech_panel, true);

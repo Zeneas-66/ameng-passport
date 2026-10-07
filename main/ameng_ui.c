@@ -20,9 +20,9 @@
 #define C_BLUE      0x8099A9
 #define C_DARK      0x252321
 
-static const lv_font_t *font_cn(void)
+static const lv_font_t *font_ui(void)
 {
-    return &lv_font_source_han_sans_sc_16_cjk;
+    return &lv_font_montserrat_14;
 }
 
 static lv_obj_t *box(lv_obj_t *parent, int x, int y, int w, int h,
@@ -112,9 +112,9 @@ static ameng_cat_ui_t cat_create(lv_obj_t *parent, int size)
     box(c.group, sc(36,size), sc(29,size), sc(5,size), sc(3,size),
         0xC78378, sc(2,size));
 
-    /* The lip mark is fixed to the SCREEN-LEFT side. We do not mirror this
-     * sprite when Ameng walks, so the asymmetric identity mark never flips. */
-    c.lip_patch = box(c.group, sc(28,size), sc(31,size), sc(8,size), sc(5,size),
+    /* Ameng's yellow lip patch is on HIS anatomical left. In a front-facing
+     * portrait that is the viewer's RIGHT. Never mirror this identity mark. */
+    c.lip_patch = box(c.group, sc(42,size), sc(31,size), sc(8,size), sc(5,size),
                       C_GOLD, sc(2,size));
 
     c.paw_l = box(c.group, sc(21,size), sc(53,size), sc(15,size), sc(12,size),
@@ -190,7 +190,7 @@ static void create_study(lv_obj_t *p)
 static void create_header(ameng_ui_t *ui)
 {
     box(ui->pet_panel, 0, 0, 240, 36, C_DARK, 0);
-    ui->room_label = label(ui->pet_panel, "客厅", font_cn(), C_PAPER);
+    ui->room_label = label(ui->pet_panel, "LIVING", font_ui(), C_PAPER);
     lv_obj_set_pos(ui->room_label, 12, 8);
     ui->time_label = label(ui->pet_panel, "12:00", &lv_font_montserrat_14, C_PAPER);
     lv_obj_set_pos(ui->time_label, 88, 10);
@@ -204,17 +204,17 @@ static void create_status(ameng_ui_t *ui)
     lv_obj_set_style_border_width(ui->status_panel, 2, 0);
     lv_obj_set_style_border_color(ui->status_panel, lv_color_hex(C_GOLD), 0);
 
-    ui->status_title = label(ui->status_panel, "阿猛状态", font_cn(), C_INK);
+    ui->status_title = label(ui->status_panel, "AMENG STATUS", font_ui(), C_INK);
     lv_obj_set_pos(ui->status_title, 14, 10);
 
     for (int i = 0; i < 8; ++i) {
-        ui->status_lines[i] = label(ui->status_panel, "", font_cn(), C_INK);
+        ui->status_lines[i] = label(ui->status_panel, "", font_ui(), C_INK);
         lv_obj_set_pos(ui->status_lines[i], 15, 38 + i * 19);
     }
     hide(ui->status_panel, true);
 }
 
-void ameng_ui_create(ameng_ui_t *ui, const char *card_name, const char *card_bio)
+void ameng_ui_create(ameng_ui_t *ui)
 {
     memset(ui, 0, sizeof(*ui));
 
@@ -225,47 +225,23 @@ void ameng_ui_create(ameng_ui_t *ui, const char *card_name, const char *card_bio
     lv_obj_set_style_pad_all(ui->screen, 0, 0);
 
     ui->home_panel = box(ui->screen, 0, 0, 240, 320, C_BG, 0);
-    ui->card_panel = box(ui->screen, 0, 0, 240, 320, C_BG, 0);
     ui->pet_panel = box(ui->screen, 0, 0, 240, 320, C_BG, 0);
     ui->settings_panel = box(ui->screen, 0, 0, 240, 320, C_BG, 0);
 
     /* Home / shell: keeps the useful badge + settings structure around Ameng. */
     lv_obj_t *brand = label(ui->home_panel, "AI PASSPORT", &lv_font_montserrat_20, C_INK);
     lv_obj_set_pos(brand, 18, 25);
-    lv_obj_t *sub = label(ui->home_panel, "阿猛陪伴版", font_cn(), C_MUTED);
+    lv_obj_t *sub = label(ui->home_panel, "AMENG COMPANION", font_ui(), C_MUTED);
     lv_obj_set_pos(sub, 19, 56);
-    static const char *home_names[3] = {"名片", "阿猛", "设置"};
-    for (int i = 0; i < 3; ++i) {
-        lv_obj_t *card = box(ui->home_panel, 18, 93 + i * 59, 204, 48,
-                             i == 1 ? 0xF3DFC9 : C_PAPER, 9);
-        ui->home_items[i] = label(card, home_names[i], font_cn(), C_INK);
+    static const char *home_names[2] = {"AMENG", "SETTINGS"};
+    for (int i = 0; i < 2; ++i) {
+        lv_obj_t *card = box(ui->home_panel, 18, 108 + i * 70, 204, 54,
+                             i == 0 ? 0xF3DFC9 : C_PAPER, 9);
+        ui->home_items[i] = label(card, home_names[i], font_ui(), C_INK);
         lv_obj_center(ui->home_items[i]);
     }
-    ui->home_hint = label(ui->home_panel, "上下选择  确认进入", font_cn(), C_MUTED);
+    ui->home_hint = label(ui->home_panel, "UP/DOWN SELECT   OK ENTER", font_ui(), C_MUTED);
     lv_obj_align(ui->home_hint, LV_ALIGN_BOTTOM_MID, 0, -18);
-
-    /* Local badge. Exact factory-mini-program sync is not part of the public
-     * firmware, but badge and settings remain first-class local pages. */
-    lv_obj_t *ct = label(ui->card_panel, "我的名片", font_cn(), C_INK);
-    lv_obj_set_pos(ct, 17, 19);
-    lv_obj_t *avatar = box(ui->card_panel, 17, 61, 76, 76, 0xDED7CB, 15);
-    lv_obj_t *a = label(avatar, "A", &lv_font_montserrat_20, C_MUTED);
-    lv_obj_center(a);
-    ui->card_name = label(ui->card_panel, card_name && card_name[0] ? card_name : "AI PASSPORT",
-                          font_cn(), C_INK);
-    lv_obj_set_width(ui->card_name, 125);
-    lv_obj_set_pos(ui->card_name, 106, 72);
-    ui->card_bio = label(ui->card_panel, card_bio && card_bio[0] ? card_bio : "阿猛陪伴版",
-                         font_cn(), C_MUTED);
-    lv_obj_set_width(ui->card_bio, 120);
-    lv_label_set_long_mode(ui->card_bio, LV_LABEL_LONG_WRAP);
-    lv_obj_set_pos(ui->card_bio, 106, 101);
-    box(ui->card_panel, 17, 157, 206, 92, 0xF7F0E5, 10);
-    ui->card_footer = label(ui->card_panel,
-                            "双击确认键返回\n资料可在编译设置中修改",
-                            font_cn(), C_MUTED);
-    lv_obj_set_style_text_align(ui->card_footer, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_align(ui->card_footer, LV_ALIGN_BOTTOM_MID, 0, -26);
 
     /* Pet page with three distinct rooms. */
     create_header(ui);
@@ -287,7 +263,7 @@ void ameng_ui_create(ameng_ui_t *ui, const char *card_name, const char *card_bio
     hide(ui->leg, true);
 
     ui->speech_panel = box(ui->pet_panel, 12, 45, 216, 60, 0xFFFDF8, 8);
-    ui->speech = label(ui->speech_panel, "", font_cn(), C_INK);
+    ui->speech = label(ui->speech_panel, "", font_ui(), C_INK);
     lv_obj_set_width(ui->speech, 192);
     lv_label_set_long_mode(ui->speech, LV_LABEL_LONG_WRAP);
     lv_obj_center(ui->speech);
@@ -295,35 +271,35 @@ void ameng_ui_create(ameng_ui_t *ui, const char *card_name, const char *card_bio
 
     box(ui->pet_panel, 0, 242, 240, 78, C_DARK, 0);
     static const char *actions[AMENG_UI_ACTION_COUNT] = {
-        "阿猛", "喂食", "抚摸", "游戏", "对话"
+        "AMENG", "FEED", "PET", "PLAY", "TALK"
     };
     for (int i = 0; i < AMENG_UI_ACTION_COUNT; ++i) {
-        ui->action_labels[i] = label(ui->pet_panel, actions[i], font_cn(), 0xBFB5AA);
+        ui->action_labels[i] = label(ui->pet_panel, actions[i], font_ui(), 0xBFB5AA);
         lv_obj_set_width(ui->action_labels[i], 47);
         lv_obj_set_style_text_align(ui->action_labels[i], LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_pos(ui->action_labels[i], 2 + i * 47, 255);
     }
-    lv_obj_t *pet_hint = label(ui->pet_panel, "长上:状态  长下:换房  长确认:息屏",
-                               font_cn(), 0xBFB5AA);
+    lv_obj_t *pet_hint = label(ui->pet_panel, "HOLD UP:STATUS  DOWN:ROOM  OK:SLEEP",
+                               font_ui(), 0xBFB5AA);
     lv_obj_set_width(pet_hint, 236);
     lv_obj_set_style_text_align(pet_hint, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_pos(pet_hint, 2, 294);
     create_status(ui);
 
     /* Settings page. */
-    lv_obj_t *st = label(ui->settings_panel, "设置", font_cn(), C_INK);
+    lv_obj_t *st = label(ui->settings_panel, "SETTINGS", &lv_font_montserrat_20, C_INK);
     lv_obj_set_pos(st, 18, 20);
-    static const char *setting_names[4] = {"亮度", "音量", "时间校准", "关于"};
+    static const char *setting_names[4] = {"BRIGHTNESS", "VOLUME", "CLOCK", "ABOUT"};
     for (int i = 0; i < 4; ++i) {
         lv_obj_t *row = box(ui->settings_panel, 16, 62 + i * 48, 208, 40, C_PAPER, 7);
-        ui->settings_items[i] = label(row, setting_names[i], font_cn(), C_INK);
+        ui->settings_items[i] = label(row, setting_names[i], font_ui(), C_INK);
         lv_obj_set_pos(ui->settings_items[i], 11, 10);
-        ui->settings_values[i] = label(row, "", font_cn(), C_MUTED);
+        ui->settings_values[i] = label(row, "", font_ui(), C_MUTED);
         lv_obj_align(ui->settings_values[i], LV_ALIGN_RIGHT_MID, -10, 0);
     }
     ui->settings_hint = label(ui->settings_panel,
-                              "上下选择  确认修改  双击确认返回",
-                              font_cn(), C_MUTED);
+                              "UP/DOWN SELECT  OK CHANGE  DOUBLE OK BACK",
+                              font_ui(), C_MUTED);
     lv_obj_align(ui->settings_hint, LV_ALIGN_BOTTOM_MID, 0, -23);
 
     ui->page = AMENG_PAGE_HOME;
@@ -341,7 +317,6 @@ void ameng_ui_show_page(ameng_ui_t *ui, ameng_page_t page)
     if (!ui) return;
     ui->page = page;
     hide(ui->home_panel, page != AMENG_PAGE_HOME);
-    hide(ui->card_panel, page != AMENG_PAGE_CARD);
     hide(ui->pet_panel, page != AMENG_PAGE_PET);
     hide(ui->settings_panel, page != AMENG_PAGE_SETTINGS);
 }
@@ -349,9 +324,9 @@ void ameng_ui_show_page(ameng_ui_t *ui, ameng_page_t page)
 void ameng_ui_set_home_selected(ameng_ui_t *ui, uint8_t selected)
 {
     if (!ui) return;
-    selected %= 3;
+    selected %= 2;
     ui->home_selected = selected;
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < 2; ++i) {
         lv_obj_t *parent = lv_obj_get_parent(ui->home_items[i]);
         lv_obj_set_style_border_width(parent, i == selected ? 2 : 0, 0);
         lv_obj_set_style_border_color(parent, lv_color_hex(C_ACCENT), 0);
@@ -389,7 +364,8 @@ void ameng_ui_set_room(ameng_ui_t *ui, ameng_room_t room)
     for (int i = 0; i < AMENG_ROOM_COUNT; ++i) {
         hide(ui->scene_panels[i], i != room);
     }
-    lv_label_set_text(ui->room_label, ameng_room_name_cn(room));
+    static const char *rooms[] = {"BEDROOM", "LIVING", "STUDY"};
+    lv_label_set_text(ui->room_label, rooms[(int)room < AMENG_ROOM_COUNT ? room : AMENG_ROOM_LIVING]);
 }
 
 void ameng_ui_set_dialogue(ameng_ui_t *ui, const char *text, bool visible)
@@ -408,50 +384,50 @@ void ameng_ui_set_status_visible(ameng_ui_t *ui, bool visible)
 
 static const char *mood_word(uint8_t v)
 {
-    if (v >= 82) return "很好";
-    if (v >= 62) return "不错";
-    if (v >= 42) return "一般";
-    if (v >= 22) return "低落";
-    return "很差";
+    if (v >= 82) return "GREAT";
+    if (v >= 62) return "GOOD";
+    if (v >= 42) return "OK";
+    if (v >= 22) return "LOW";
+    return "BAD";
 }
 
 static const char *need_word(uint8_t v, const char *high)
 {
     if (v >= 82) return high;
-    if (v >= 58) return "有一点";
-    if (v >= 30) return "正常";
-    return "满足";
+    if (v >= 58) return "A LITTLE";
+    if (v >= 30) return "NORMAL";
+    return "SATISFIED";
 }
 
 static const char *energy_word(uint8_t v)
 {
-    if (v >= 78) return "充足";
-    if (v >= 50) return "正常";
-    if (v >= 25) return "有点累";
-    return "很困";
+    if (v >= 78) return "FULL";
+    if (v >= 50) return "NORMAL";
+    if (v >= 25) return "TIRED";
+    return "SLEEPY";
 }
 
 static const char *play_word(uint8_t v)
 {
-    if (v >= 75) return "很想玩";
-    if (v >= 50) return "想玩";
-    if (v >= 25) return "一般";
-    return "不太想";
+    if (v >= 75) return "VERY PLAYFUL";
+    if (v >= 50) return "PLAYFUL";
+    if (v >= 25) return "CALM";
+    return "NOT NOW";
 }
 
 void ameng_ui_render_status(ameng_ui_t *ui, const ameng_state_t *s)
 {
     if (!ui || !s) return;
-    lv_label_set_text_fmt(ui->status_lines[0], "心情  %s", mood_word(s->mood));
-    lv_label_set_text_fmt(ui->status_lines[1], "饥饿  %s", need_word(s->hunger, "很饿"));
-    lv_label_set_text_fmt(ui->status_lines[2], "口渴  %s", need_word(s->thirst, "很渴"));
-    lv_label_set_text_fmt(ui->status_lines[3], "精力  %s", energy_word(s->energy));
-    lv_label_set_text_fmt(ui->status_lines[4], "玩心  %s", play_word(s->play_drive));
-    lv_label_set_text_fmt(ui->status_lines[5], "好感  %u",
+    lv_label_set_text_fmt(ui->status_lines[0], "MOOD   %s", mood_word(s->mood));
+    lv_label_set_text_fmt(ui->status_lines[1], "HUNGER %s", need_word(s->hunger, "HUNGRY"));
+    lv_label_set_text_fmt(ui->status_lines[2], "THIRST %s", need_word(s->thirst, "THIRSTY"));
+    lv_label_set_text_fmt(ui->status_lines[3], "ENERGY %s", energy_word(s->energy));
+    lv_label_set_text_fmt(ui->status_lines[4], "PLAY   %s", play_word(s->play_drive));
+    lv_label_set_text_fmt(ui->status_lines[5], "AFFECTION %u",
                           ameng_relationship_percent(s->affection_x10));
-    lv_label_set_text_fmt(ui->status_lines[6], "信任  %u",
+    lv_label_set_text_fmt(ui->status_lines[6], "TRUST     %u",
                           ameng_relationship_percent(s->trust_x10));
-    lv_label_set_text_fmt(ui->status_lines[7], "相伴  %lu天",
+    lv_label_set_text_fmt(ui->status_lines[7], "TOGETHER  %lu DAYS",
                           (unsigned long)(s->days_together + 1));
 }
 
@@ -535,7 +511,7 @@ void ameng_ui_render_settings(ameng_ui_t *ui, uint8_t brightness,
     lv_label_set_text_fmt(ui->settings_values[0], "%u%%", brightness);
     lv_label_set_text_fmt(ui->settings_values[1], "%u%%", volume);
     lv_label_set_text_fmt(ui->settings_values[2], "%02u:00", hour);
-    lv_label_set_text(ui->settings_values[3], "阿猛 V2");
+    lv_label_set_text(ui->settings_values[3], "AMENG V2");
 }
 
 void ameng_ui_start_animation(ameng_ui_t *ui, ameng_anim_t anim)

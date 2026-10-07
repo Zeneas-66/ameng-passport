@@ -423,9 +423,9 @@ const char *ameng_behavior_name(ameng_behavior_t behavior)
 const char *ameng_room_name_cn(ameng_room_t room)
 {
     switch (room) {
-    case AMENG_ROOM_BEDROOM: return "卧室";
-    case AMENG_ROOM_LIVING: return "客厅";
-    case AMENG_ROOM_STUDY: return "书房";
-    default: return "家里";
+    case AMENG_ROOM_BEDROOM: return "BEDROOM";
+    case AMENG_ROOM_LIVING: return "LIVING";
+    case AMENG_ROOM_STUDY: return "STUDY";
+    default: return "HOME";
     }
 }

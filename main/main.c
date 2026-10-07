@@ -244,16 +244,16 @@ static void do_pet_action(ameng_ui_action_t action)
         ameng_call_result_t result =
             ameng_state_call(&s_pet, s_player_room, n, hour);
         if (result == AMENG_CALL_SAME_ROOM) {
-            show_cat_message(AMENG_LINE_CALL_SAME)(s_pet.daily_calls % 6));
+            show_cat_message(AMENG_LINE_CALL_SAME);
         } else if (result == AMENG_CALL_COMES) {
-            show_cat_message(AMENG_LINE_CALL_COMES)(s_pet.daily_calls % 6));
+            show_cat_message(AMENG_LINE_CALL_COMES);
             s_pet.cat_depth = 1;
             if (bsp_lvgl_lock(250)) {
                 ameng_ui_start_animation(&s_ui, AMENG_ANIM_ENTER);
                 bsp_lvgl_unlock();
             }
         } else {
-            show_cat_message(AMENG_LINE_CALL_FAR)(s_pet.daily_calls % 6));
+            show_cat_message(AMENG_LINE_CALL_FAR);
         }
         break;
     }

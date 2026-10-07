@@ -75,9 +75,11 @@ static ameng_cat_ui_t cat_create(lv_obj_t *parent, int size)
     lv_obj_set_style_border_width(c.group, 0, 0);
     lv_obj_set_style_pad_all(c.group, 0, 0);
 
-    /* Tail behind the body. */
-    c.tail = box(c.group, sc(58,size), sc(39,size), sc(19,size), sc(12,size),
-                 C_GOLD, sc(6,size));
+    /* Fluffy yellow tail behind the body. */
+    c.tail = box(c.group, sc(57,size), sc(37,size), sc(21,size), sc(14,size),
+                 C_GOLD, sc(7,size));
+    box(c.group, sc(68,size), sc(34,size), sc(9,size), sc(11,size),
+        C_GOLD, sc(5,size));
 
     /* Fluffy body and chest. */
     box(c.group, sc(16,size), sc(32,size), sc(50,size), sc(31,size),
@@ -90,8 +92,11 @@ static ameng_cat_ui_t cat_create(lv_obj_t *parent, int size)
     /* Broad lion-like mane + head. */
     box(c.group, sc(12,size), sc(4,size), sc(52,size), sc(42,size),
         C_FUR_SH, sc(17,size));
-    c.head = box(c.group, sc(15,size), sc(5,size), sc(47,size), sc(38,size),
-                 C_FUR, sc(15,size));
+    c.head = box(c.group, sc(14,size), sc(5,size), sc(49,size), sc(39,size),
+                 C_FUR, sc(16,size));
+    /* Cheek fluff gives Ameng his broad, lion-like face. */
+    box(c.group, sc(11,size), sc(21,size), sc(15,size), sc(18,size), C_FUR, sc(8,size));
+    box(c.group, sc(52,size), sc(21,size), sc(15,size), sc(18,size), C_FUR, sc(8,size));
 
     /* Ears. */
     box(c.group, sc(17,size), sc(1,size), sc(13,size), sc(15,size),
@@ -100,22 +105,27 @@ static ameng_cat_ui_t cat_create(lv_obj_t *parent, int size)
         C_FUR, sc(3,size));
 
     /* IMPORTANT: Ameng has pale yellow fur on BOTH sides of the crown. */
-    c.patch_l = box(c.group, sc(19,size), sc(7,size), sc(14,size), sc(10,size),
-                    C_GOLD, sc(4,size));
-    c.patch_r = box(c.group, sc(45,size), sc(6,size), sc(13,size), sc(11,size),
-                    C_GOLD, sc(4,size));
+    c.patch_l = box(c.group, sc(18,size), sc(5,size), sc(15,size), sc(11,size),
+                    C_GOLD, sc(5,size));
+    box(c.group, sc(24,size), sc(12,size), sc(8,size), sc(7,size), C_GOLD, sc(3,size));
+    c.patch_r = box(c.group, sc(46,size), sc(5,size), sc(14,size), sc(12,size),
+                    C_GOLD, sc(5,size));
+    box(c.group, sc(44,size), sc(12,size), sc(8,size), sc(7,size), C_GOLD, sc(3,size));
 
     c.eye_l = box(c.group, sc(27,size), sc(23,size), sc(6,size), sc(4,size),
                   C_EYE, sc(2,size));
     c.eye_r = box(c.group, sc(45,size), sc(23,size), sc(6,size), sc(4,size),
                   C_EYE, sc(2,size));
-    box(c.group, sc(36,size), sc(29,size), sc(5,size), sc(3,size),
+    /* Small pink nose and white muzzle. */
+    box(c.group, sc(30,size), sc(28,size), sc(15,size), sc(10,size), 0xFFFDF8, sc(5,size));
+    box(c.group, sc(38,size), sc(28,size), sc(15,size), sc(10,size), 0xFFFDF8, sc(5,size));
+    box(c.group, sc(36,size), sc(29,size), sc(6,size), sc(4,size),
         0xC78378, sc(2,size));
 
     /* Ameng's yellow lip patch is on HIS anatomical left. In a front-facing
      * portrait that is the viewer's RIGHT. Never mirror this identity mark. */
-    c.lip_patch = box(c.group, sc(42,size), sc(31,size), sc(8,size), sc(5,size),
-                      C_GOLD, sc(2,size));
+    c.lip_patch = box(c.group, sc(45,size), sc(33,size), sc(9,size), sc(6,size),
+                      C_GOLD, sc(3,size));
 
     c.paw_l = box(c.group, sc(21,size), sc(53,size), sc(15,size), sc(12,size),
                   C_FUR, sc(6,size));
@@ -279,7 +289,8 @@ void ameng_ui_create(ameng_ui_t *ui)
         lv_obj_set_style_text_align(ui->action_labels[i], LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_pos(ui->action_labels[i], 2 + i * 47, 255);
     }
-    lv_obj_t *pet_hint = label(ui->pet_panel, "HOLD UP:STATUS  DOWN:ROOM  OK:SLEEP",
+    lv_obj_t *pet_hint = label(ui->pet_panel,
+                               "HOLD UP:STATUS  DN:ROOM\nHOLD OK:SLEEP",
                                font_ui(), 0xBFB5AA);
     lv_obj_set_width(pet_hint, 236);
     lv_obj_set_style_text_align(pet_hint, LV_TEXT_ALIGN_CENTER, 0);
@@ -302,13 +313,13 @@ void ameng_ui_create(ameng_ui_t *ui)
                               font_ui(), C_MUTED);
     lv_obj_align(ui->settings_hint, LV_ALIGN_BOTTOM_MID, 0, -23);
 
-    ui->page = AMENG_PAGE_HOME;
+    ui->page = AMENG_PAGE_PET;
     ui->selected_action = AMENG_UI_CALL;
     ui->room = AMENG_ROOM_LIVING;
     ameng_ui_set_home_selected(ui, 0);
     ameng_ui_set_action(ui, AMENG_UI_CALL);
     ameng_ui_set_settings_selected(ui, 0);
-    ameng_ui_show_page(ui, AMENG_PAGE_HOME);
+    ameng_ui_show_page(ui, AMENG_PAGE_PET);
     lv_screen_load(ui->screen);
 }
 

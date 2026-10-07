@@ -139,48 +139,19 @@ static esp_err_t __attribute__((unused)) http_event(esp_http_client_event_t *evt
     return ESP_OK;
 }
 
-static size_t __attribute__((unused)) utf8_seq_len(unsigned char c)
-{
-    if ((c & 0x80U) == 0) return 1;
-    if ((c & 0xE0U) == 0xC0U) return 2;
-    if ((c & 0xF0U) == 0xE0U) return 3;
-    if ((c & 0xF8U) == 0xF0U) return 4;
-    return 1;
-}
-
-static void __attribute__((unused)) copy_short_chinese(const char *src, char *out, size_t out_size)
+static void __attribute__((unused)) copy_short_ascii(const char *src, char *out, size_t out_size)
 {
     if (!src || !out || out_size == 0) return;
     size_t w = 0;
-    size_t glyphs = 0;
-    const unsigned char *p = (const unsigned char *)src;
-
-    while (*p && glyphs < 18) {
-        size_t n = utf8_seq_len(*p);
-        bool valid = true;
-        for (size_t i = 1; i < n; ++i) {
-            if (p[i] == 0 || (p[i] & 0xC0U) != 0x80U) {
-                valid = false;
-                break;
-            }
-        }
-        if (!valid) {
-            p++;
-            continue;
-        }
-
-        if (n == 1 && (*p == '\n' || *p == '\r' || *p == '\t' ||
-                       *p == '"' || *p == '\'')) {
-            p += n;
-            continue;
-        }
-
-        if (w + n + 1 > out_size) break;
-        memcpy(out + w, p, n);
-        w += n;
-        p += n;
-        glyphs++;
+    for (const unsigned char *p = (const unsigned char *)src; *p && w + 1 < out_size; ++p) {
+        unsigned char ch = *p;
+        if (ch == '\n' || ch == '\r' || ch == '\t') ch = ' ';
+        if (ch < 0x20 || ch > 0x7e || ch == '"' || ch == '\'') continue;
+        if (w && ch == ' ' && out[w - 1] == ' ') continue;
+        out[w++] = (char)ch;
+        if (w >= 48) break;
     }
+    while (w && out[w - 1] == ' ') --w;
     out[w] = '\0';
 }
 
@@ -218,11 +189,13 @@ esp_err_t ameng_ai_generate(const ameng_state_t *state,
     cJSON *system = cJSON_CreateObject();
     cJSON_AddStringToObject(system, "role", "system");
     cJSON_AddStringToObject(system, "content",
-        "你是阿猛，一只体型很大、白色长毛、头顶两侧有淡黄色毛、尾巴偏黄、"
-        "左嘴边有黄色毛的猫。性格清高、寡言、贪吃、闷骚，熟悉以后很黏人。"
-        "只输出括号里面要表达的中文意思，不要输出喵、括号、引号。"
-        "最多18个汉字，尽量简短自然。绝对不能编造AMENG_FACTS之外的既往记忆，"
-        "也不能和当前饥饿、精力、心情、位置等事实矛盾。");
+        "You are Ameng, a very large long-haired white cat with pale yellow fur "
+        "on both sides of the crown, a yellowish tail, and a yellow patch on HIS "
+        "left side of the mouth. He is proud, quiet, food-loving, aloof-looking "
+        "but affectionate once familiar. Output only the short English meaning "
+        "that goes inside parentheses. Do not output MEOW or parentheses. "
+        "Use at most 8 short words. Never invent past memories outside AMENG_FACTS "
+        "and never contradict current hunger, energy, mood, or location.");
     cJSON_AddItemToArray(messages, system);
 
     cJSON *user = cJSON_CreateObject();
@@ -274,7 +247,7 @@ esp_err_t ameng_ai_generate(const ameng_state_t *state,
         return ESP_ERR_INVALID_RESPONSE;
     }
 
-    copy_short_chinese(content->valuestring, out, out_size);
+    copy_short_ascii(content->valuestring, out, out_size);
     cJSON_Delete(parsed);
     return out[0] ? ESP_OK : ESP_ERR_INVALID_RESPONSE;
 #endif

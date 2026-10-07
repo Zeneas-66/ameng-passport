@@ -6,7 +6,6 @@
 
 typedef enum {
     AMENG_PAGE_HOME = 0,
-    AMENG_PAGE_CARD,
     AMENG_PAGE_PET,
     AMENG_PAGE_SETTINGS,
 } ameng_page_t;
@@ -47,16 +46,11 @@ typedef struct {
 typedef struct {
     lv_obj_t *screen;
     lv_obj_t *home_panel;
-    lv_obj_t *card_panel;
     lv_obj_t *pet_panel;
     lv_obj_t *settings_panel;
 
-    lv_obj_t *home_items[3];
+    lv_obj_t *home_items[2];
     lv_obj_t *home_hint;
-
-    lv_obj_t *card_name;
-    lv_obj_t *card_bio;
-    lv_obj_t *card_footer;
 
     lv_obj_t *scene_panels[AMENG_ROOM_COUNT];
     lv_obj_t *room_label;
@@ -89,7 +83,7 @@ typedef struct {
     uint8_t anim_frame;
 } ameng_ui_t;
 
-void ameng_ui_create(ameng_ui_t *ui, const char *card_name, const char *card_bio);
+void ameng_ui_create(ameng_ui_t *ui);
 void ameng_ui_show_page(ameng_ui_t *ui, ameng_page_t page);
 
 void ameng_ui_set_home_selected(ameng_ui_t *ui, uint8_t selected);

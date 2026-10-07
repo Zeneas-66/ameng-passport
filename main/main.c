@@ -201,7 +201,7 @@ static void queue_ai_talk(uint64_t n)
     };
     if (xQueueSend(s_ai_queue, &job, 0) == pdTRUE) {
         s_ai_busy = true;
-        show_plain_message("喵……（让我想想）");
+        show_plain_message("MEOW... (LET ME THINK)");
     } else {
         show_cat_message(AMENG_LINE_TALK, 2);
     }
@@ -232,14 +232,14 @@ static void do_pet_action(ameng_ui_action_t action)
     }
 
     case AMENG_UI_FEED:
-        if (!require_ameng_here("阿猛不在这里，先叫它吧")) break;
+        if (!require_ameng_here("AMENG ISN'T HERE. CALL HIM FIRST.")) break;
         if (ameng_state_interact(&s_pet, AMENG_ACTION_FEED, s_player_room, n, hour)) {
             show_cat_message(AMENG_LINE_FEED, 1);
         }
         break;
 
     case AMENG_UI_PET:
-        if (!require_ameng_here("阿猛不在这里，先叫它吧")) break;
+        if (!require_ameng_here("AMENG ISN'T HERE. CALL HIM FIRST.")) break;
         if (ameng_state_interact(&s_pet, AMENG_ACTION_PET, s_player_room, n, hour)) {
             show_cat_message(AMENG_LINE_PET, 4);
             bool hug = ameng_relationship_percent(s_pet.affection_x10) >= 60 &&
@@ -253,7 +253,7 @@ static void do_pet_action(ameng_ui_action_t action)
         break;
 
     case AMENG_UI_PLAY:
-        if (!require_ameng_here("阿猛不在这里，先叫它吧")) break;
+        if (!require_ameng_here("AMENG ISN'T HERE. CALL HIM FIRST.")) break;
         if (ameng_state_interact(&s_pet, AMENG_ACTION_PLAY, s_player_room, n, hour)) {
             s_pet.cat_depth = 1;
             show_cat_message(AMENG_LINE_PLAY, 5);
@@ -267,7 +267,7 @@ static void do_pet_action(ameng_ui_action_t action)
         break;
 
     case AMENG_UI_TALK:
-        if (!require_ameng_here("请先到阿猛身边")) break;
+        if (!require_ameng_here("GO TO AMENG FIRST.")) break;
         if (!ameng_state_interact(&s_pet, AMENG_ACTION_TALK,
                                   s_player_room, n, hour)) {
             break;
@@ -304,9 +304,7 @@ static void go_home(void)
 
 static void enter_selected_home(void)
 {
-    ameng_page_t page = AMENG_PAGE_CARD;
-    if (s_home_selected == 1) page = AMENG_PAGE_PET;
-    else if (s_home_selected == 2) page = AMENG_PAGE_SETTINGS;
+    ameng_page_t page = s_home_selected == 0 ? AMENG_PAGE_PET : AMENG_PAGE_SETTINGS;
 
     if (!bsp_lvgl_lock(300)) return;
     ameng_ui_show_page(&s_ui, page);
@@ -356,8 +354,8 @@ static void settings_apply_click(void)
         s_time_edit = !s_time_edit;
         if (bsp_lvgl_lock(200)) {
             lv_label_set_text(s_ui.settings_hint,
-                s_time_edit ? "时间校准：上下调小时  确认完成"
-                            : "上下选择  确认修改  双击确认返回");
+                s_time_edit ? "CLOCK: UP/DOWN HOUR  OK DONE"
+                            : "UP/DOWN SELECT  OK CHANGE  DOUBLE OK BACK");
             bsp_lvgl_unlock();
         }
     }
@@ -451,9 +449,9 @@ static void handle_home_key(const input_event_t *e)
 {
     if (e->ev != BSP_BTN_CLICK) return;
     if (e->btn == BSP_BTN_UP) {
-        s_home_selected = (uint8_t)((s_home_selected + 2) % 3);
+        s_home_selected = (uint8_t)((s_home_selected + 1) % 2);
     } else if (e->btn == BSP_BTN_DOWN) {
-        s_home_selected = (uint8_t)((s_home_selected + 1) % 3);
+        s_home_selected = (uint8_t)((s_home_selected + 1) % 2);
     } else if (e->btn == BSP_BTN_OK) {
         enter_selected_home();
         return;
@@ -636,7 +634,7 @@ void app_main(void)
     ameng_audio_set_volume(s_volume);
 
     if (!bsp_lvgl_lock(1000)) return;
-    ameng_ui_create(&s_ui, CONFIG_AMENG_CARD_NAME, CONFIG_AMENG_CARD_BIO);
+    ameng_ui_create(&s_ui);
     ameng_ui_set_room(&s_ui, s_player_room);
     ameng_ui_render_settings(&s_ui, s_brightness, s_volume, local_hour(now_s()));
     bsp_lvgl_unlock();

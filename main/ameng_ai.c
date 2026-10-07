@@ -6,12 +6,14 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_netif_sntp.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 static const char *TAG __attribute__((unused)) = "ameng_ai";
 #define WIFI_CONNECTED_BIT BIT0
@@ -20,6 +22,7 @@ static const char *TAG __attribute__((unused)) = "ameng_ai";
 static EventGroupHandle_t s_wifi_events;
 static bool s_initialized;
 static bool s_enabled;
+static bool s_sntp_started;
 
 static void __attribute__((unused)) wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
@@ -32,6 +35,15 @@ static void __attribute__((unused)) wifi_event(void *arg, esp_event_base_t base,
         esp_wifi_connect();
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         xEventGroupSetBits(s_wifi_events, WIFI_CONNECTED_BIT);
+        if (!s_sntp_started) {
+            esp_sntp_config_t config = ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+            esp_err_t err = esp_netif_sntp_init(&config);
+            if (err == ESP_OK || err == ESP_ERR_INVALID_STATE) {
+                s_sntp_started = true;
+            } else {
+                ESP_LOGW(TAG, "SNTP init failed: %s", esp_err_to_name(err));
+            }
+        }
     }
 }
 
@@ -93,6 +105,17 @@ bool ameng_ai_online(void)
 {
     if (!s_enabled || !s_wifi_events) return false;
     return (xEventGroupGetBits(s_wifi_events) & WIFI_CONNECTED_BIT) != 0;
+}
+
+uint64_t ameng_ai_real_epoch_s(void)
+{
+    time_t now = time(NULL);
+    return now >= (time_t)1700000000 ? (uint64_t)now : 0ULL;
+}
+
+bool ameng_ai_time_synced(void)
+{
+    return ameng_ai_real_epoch_s() != 0ULL;
 }
 
 typedef struct {

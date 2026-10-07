@@ -1,5 +1,6 @@
 #include "ameng_audio.h"
 #include "ameng_meow_sample.h"
+#include "ameng_meow_variants.h"
 
 #include "bsp_audio.h"
 #include "esp_log.h"
@@ -12,12 +13,38 @@
 #define CHUNK_BYTES 1024
 
 typedef struct {
-    uint8_t variant;
+    ameng_meow_t voice;
 } audio_cmd_t;
+
+typedef struct {
+    const uint8_t *wav;
+    size_t len;
+    const char *name;
+} meow_asset_t;
 
 static const char *TAG = "ameng_audio";
 static QueueHandle_t s_queue;
 static uint8_t s_volume = 70;
+
+static const meow_asset_t s_meows[AMENG_MEOW_COUNT] = {
+    [AMENG_MEOW_SOFT]     = {ameng_meow_soft_wav,   0, "soft"},
+    [AMENG_MEOW_SOCIAL]   = {ameng_meow_social_wav, 0, "social"},
+    [AMENG_MEOW_LOW]      = {ameng_meow_low_wav,    0, "low"},
+    [AMENG_MEOW_QUICK]    = {ameng_meow_quick_wav,  0, "quick"},
+    [AMENG_MEOW_PLEADING] = {ameng_meow_wav,        0, "pleading"},
+};
+
+static size_t asset_len(ameng_meow_t voice)
+{
+    switch (voice) {
+    case AMENG_MEOW_SOFT: return ameng_meow_soft_wav_size;
+    case AMENG_MEOW_SOCIAL: return ameng_meow_social_wav_size;
+    case AMENG_MEOW_LOW: return ameng_meow_low_wav_size;
+    case AMENG_MEOW_QUICK: return ameng_meow_quick_wav_size;
+    case AMENG_MEOW_PLEADING: return ameng_meow_wav_size;
+    default: return ameng_meow_social_wav_size;
+    }
+}
 
 static uint16_t le16(const uint8_t *p)
 {
@@ -70,26 +97,23 @@ static bool wav_pcm_info(const uint8_t *wav, size_t len,
     return true;
 }
 
-static void play_one(uint8_t variant)
+static void play_one(ameng_meow_t voice)
 {
+    if (voice >= AMENG_MEOW_COUNT) voice = AMENG_MEOW_SOCIAL;
+    const meow_asset_t *asset = &s_meows[voice];
+    size_t len = asset_len(voice);
+
     const uint8_t *pcm = NULL;
     size_t pcm_bytes = 0;
-    uint32_t base_rate = 0;
-    if (!wav_pcm_info(ameng_meow_wav, ameng_meow_wav_size,
-                      &pcm, &pcm_bytes, &base_rate)) {
-        ESP_LOGE(TAG, "invalid embedded meow WAV");
+    uint32_t rate = 0;
+    if (!wav_pcm_info(asset->wav, len, &pcm, &pcm_bytes, &rate)) {
+        ESP_LOGE(TAG, "invalid %s meow WAV", asset->name);
         return;
     }
 
-    /* A single real recording is played at subtly different sample rates.
-     * This changes pitch/duration without synthetic oscillators, so repeated
-     * responses do not sound exactly identical. */
-    static const int8_t pct[] = {-7, -3, 0, 3, 6, -10};
-    variant %= 6;
-    uint32_t rate = (uint32_t)((int64_t)base_rate * (100 + pct[variant]) / 100);
-    if (rate < 8000) rate = 8000;
-
-    if (bsp_audio_set_format((int)rate, 16, 1) != ESP_OK) {
+    /* Keep the recordings natural. Each state uses a genuinely different
+     * cat vocalization; no oscillator and no pitch-shifting. */
+    if (bsp_audio_set_format(rate, 16, 1) != ESP_OK) {
         ESP_LOGW(TAG, "audio format %lu Hz rejected", (unsigned long)rate);
         return;
     }
@@ -102,7 +126,7 @@ static void play_one(uint8_t variant)
         n &= ~(size_t)1;
         if (!n) break;
         if (bsp_audio_write(pcm + pos, n) != ESP_OK) {
-            ESP_LOGW(TAG, "real meow playback failed");
+            ESP_LOGW(TAG, "%s meow playback failed", asset->name);
             return;
         }
         pos += n;
@@ -115,7 +139,7 @@ static void worker(void *arg)
     audio_cmd_t cmd;
     for (;;) {
         if (xQueueReceive(s_queue, &cmd, portMAX_DELAY) == pdTRUE) {
-            play_one(cmd.variant);
+            play_one(cmd.voice);
         }
     }
 }
@@ -144,9 +168,9 @@ void ameng_audio_set_volume(uint8_t volume)
     s_volume = volume;
 }
 
-void ameng_audio_meow(uint8_t variant)
+void ameng_audio_meow(ameng_meow_t voice)
 {
     if (!s_queue) return;
-    audio_cmd_t cmd = {.variant = variant};
+    audio_cmd_t cmd = {.voice = voice};
     (void)xQueueSend(s_queue, &cmd, 0);
 }

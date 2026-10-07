@@ -3,7 +3,7 @@
 #include "nvs_flash.h"
 
 #define AMENG_MAGIC 0x414D454EU
-#define AMENG_SCHEMA 2U
+#define AMENG_SCHEMA 3U
 
 typedef struct {
     uint32_t magic;

@@ -52,19 +52,23 @@ esp_err_t ameng_ai_init(void)
     if (s_initialized) return ESP_OK;
     s_initialized = true;
 
-#if !CONFIG_AMENG_AI_ENABLE
-    s_enabled = false;
-    return ESP_OK;
-#else
-    if (CONFIG_AMENG_AI_API_KEY[0] == '\0' ||
-        CONFIG_AMENG_WIFI_SSID[0] == '\0' ||
-        CONFIG_AMENG_AI_ENDPOINT[0] == '\0') {
-        ESP_LOGW(TAG, "AI disabled: configure Wi-Fi and API settings");
+    /* Network time is useful even with cloud dialogue disabled. */
+    if (CONFIG_AMENG_WIFI_SSID[0] == '\0') {
         s_enabled = false;
+        ESP_LOGI(TAG, "Wi-Fi not configured; using persisted/manual clock");
         return ESP_OK;
     }
 
-    s_enabled = true;
+#if CONFIG_AMENG_AI_ENABLE
+    s_enabled = (CONFIG_AMENG_AI_API_KEY[0] != '\0' &&
+                 CONFIG_AMENG_AI_ENDPOINT[0] != '\0');
+    if (!s_enabled) {
+        ESP_LOGW(TAG, "cloud dialogue disabled: API settings incomplete; SNTP still enabled");
+    }
+#else
+    s_enabled = false;
+#endif
+
     s_wifi_events = xEventGroupCreate();
     if (!s_wifi_events) return ESP_ERR_NO_MEM;
 
@@ -93,7 +97,6 @@ esp_err_t ameng_ai_init(void)
     if (err == ESP_OK) err = esp_wifi_set_config(WIFI_IF_STA, &wifi);
     if (err == ESP_OK) err = esp_wifi_start();
     return err;
-#endif
 }
 
 bool ameng_ai_enabled(void)
@@ -103,7 +106,7 @@ bool ameng_ai_enabled(void)
 
 bool ameng_ai_online(void)
 {
-    if (!s_enabled || !s_wifi_events) return false;
+    if (!s_wifi_events) return false;
     return (xEventGroupGetBits(s_wifi_events) & WIFI_CONNECTED_BIT) != 0;
 }
 

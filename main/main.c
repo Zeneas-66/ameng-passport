@@ -636,6 +636,9 @@ void app_main(void)
     if (!bsp_lvgl_lock(1000)) return;
     ameng_ui_create(&s_ui);
     ameng_ui_set_room(&s_ui, s_player_room);
+    ameng_ui_render_pet(&s_ui, &s_pet, s_player_room,
+                        local_hour(now_s()), local_minute(now_s()),
+                        bsp_battery_soc(), false);
     ameng_ui_render_settings(&s_ui, s_brightness, s_volume, local_hour(now_s()));
     bsp_lvgl_unlock();
 
